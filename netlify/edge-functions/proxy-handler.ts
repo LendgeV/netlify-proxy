@@ -2,11 +2,6 @@
 import type { Context } from "@netlify/edge-functions";
 
 // 定义你的代理规则
-// 注意：
-// 1. 键名会自动作为路径前缀（自动添加 /）
-// 2. 值会自动添加 https:// 协议（除非已有协议）
-// 3. 访问 /groq/xxx 会代理到 https://api.groq.com/openai/xxx
-
 const PROXY_CONFIG = {
   // ===== API 服务器 =====
   groq: "api.groq.com/openai",
@@ -47,8 +42,23 @@ const PROXY_CONFIG = {
   navy: "api.navy",
   void: "api.voidai.app",
 
+  // ===== 社交/通讯 API =====
+  discord: "discord.com/api",
+  telegram: "api.telegram.org",
+
+  // ===== 其他 AI 服务 =====
+  cohere: "api.cohere.ai",
+  huggingface: "api-inference.huggingface.co",
+  together: "api.together.xyz",
+  novita: "api.novita.ai",
+  portkey: "api.portkey.ai",
+  fireworks: "api.fireworks.ai",
+  meta: "www.meta.ai/api",
+
   // ===== 任意网址代理 =====
   hanime: "hanime1.me",
+  hexo: "hexo-gally.vercel.app",
+  tv: "tv.gally.ddns-ip.net",
 } as const;
 
 // 需要修复路径的内容类型
@@ -59,23 +69,19 @@ const HTML_CONTENT_TYPES = [
   'text/xml'
 ];
 
-// 可能需要修复路径的 CSS 内容类型
 const CSS_CONTENT_TYPES = [
   'text/css'
 ];
 
-// JavaScript 内容类型
 const JS_CONTENT_TYPES = [
   'application/javascript',
   'text/javascript',
   'application/x-javascript'
 ];
 
-// 特定网站的替换规则 (针对某些站点的特殊处理)
+// 特定网站的替换规则
 const SPECIAL_REPLACEMENTS: Record<string, Array<{pattern: RegExp, replacement: Function}>> = {
-  // hexo 博客特殊处理 (Vercel 部署)
   'hexo-gally.vercel.app': [
-    // 替换所有 /css/, /js/, /images/ 等资源路径
     {
       pattern: /(?:src|href|content)=['"](?:\.?\/)?([^"']*\.(css|js|png|jpg|jpeg|gif|svg|webp|ico))["']/gi,
       replacement: (match: string, path: string, ext: string) => {
@@ -121,7 +127,6 @@ const SPECIAL_REPLACEMENTS: Record<string, Array<{pattern: RegExp, replacement: 
       }
     }
   ],
-  // TV 站点特殊处理
   'tv.gally.ddns-ip.net': [
     {
       pattern: /(?:src|href|content)=['"](?:\.?\/)?([^"']*\.(css|js|png|jpg|jpeg|gif|svg|webp|ico))["']/gi,
@@ -150,11 +155,9 @@ const SPECIAL_REPLACEMENTS: Record<string, Array<{pattern: RegExp, replacement: 
  * 标准化URL - 确保有协议前缀
  */
 function normalizeUrl(urlString: string): string {
-  // 如果已经有协议，直接返回
   if (urlString.startsWith('http://') || urlString.startsWith('https://')) {
     return urlString;
   }
-  // 否则添加 https://
   return 'https://' + urlString;
 }
 
@@ -166,7 +169,7 @@ function normalizePathPrefix(prefix: string): string {
 }
 
 export default async (request: Request, context: Context) => {
-  // 处理 CORS 预检请求 (OPTIONS)
+  // 处理 CORS 预检请求
   if (request.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -183,7 +186,7 @@ export default async (request: Request, context: Context) => {
   const url = new URL(request.url);
   const path = url.pathname;
 
-  // 特殊处理 /proxy/ 路径 - 用于代理任意URL
+  // 特殊处理 /proxy/ 路径
   if (path.startsWith('/proxy/')) {
     try {
       let targetUrlString = path.substring('/proxy/'.length);
@@ -271,7 +274,6 @@ export default async (request: Request, context: Context) => {
   let targetBaseUrl: string | null = null;
   let matchedPrefix: string | null = null;
 
-  // 将配置键转换为标准化的路径前缀
   const normalizedConfig: Record<string, string> = {};
   for (const [key, value] of Object.entries(PROXY_CONFIG)) {
     const normalizedKey = normalizePathPrefix(key);
@@ -279,7 +281,6 @@ export default async (request: Request, context: Context) => {
     normalizedConfig[normalizedKey] = normalizedValue;
   }
 
-  // 倒序遍历，以便更具体的路径优先
   const prefixes = Object.keys(normalizedConfig).sort().reverse();
 
   for (const prefix of prefixes) {
@@ -290,7 +291,6 @@ export default async (request: Request, context: Context) => {
     }
   }
 
-  // 如果找到了匹配的规则
   if (targetBaseUrl && matchedPrefix) {
     const remainingPath = path.substring(matchedPrefix.length);
     const targetUrlString = targetBaseUrl.replace(/\/$/, '') + remainingPath;
@@ -349,79 +349,66 @@ export default async (request: Request, context: Context) => {
         const targetPathBase = targetUrl.pathname.substring(0, targetUrl.pathname.lastIndexOf('/') + 1);
         
         if (HTML_CONTENT_TYPES.some(type => contentType.includes(type))) {
-          // 1. 替换以协议开头的绝对路径
           content = content.replace(
             new RegExp(`(href|src|action|content)=["']https?://${targetDomain}(/[^"']*?)["']`, 'gi'),
             `$1="${url.origin}${matchedPrefix}$2"`
           );
           
-          // 2. 替换以 // 开头的协议相对路径
           content = content.replace(
             new RegExp(`(href|src|action|content)=["']//${targetDomain}(/[^"']*?)["']`, 'gi'),
             `$1="${url.origin}${matchedPrefix}$2"`
           );
           
-          // 3. 替换以根目录 / 开头的路径
           content = content.replace(
             new RegExp(`(href|src|action|content)=["'](/[^"']*?)["']`, 'gi'),
             `$1="${url.origin}${matchedPrefix}$2"`
           );
           
-          // 4. 替换 CSS 中的 url() 引用
           content = content.replace(
             new RegExp(`url\\(['"]?https?://${targetDomain}(/[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
           
-          // 5. 替换 CSS 中 url(//...) 的引用
           content = content.replace(
             new RegExp(`url\\(['"]?//${targetDomain}(/[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
           
-          // 6. 替换 CSS 中 url(/...) 根目录引用
           content = content.replace(
             new RegExp(`url\\(['"]?(/[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
           
-          // 7. 处理 <base> 标签
           content = content.replace(
             new RegExp(`<base[^>]*href=["']https?://${targetDomain}(?:/[^"']*?)?["'][^>]*>`, 'gi'),
             `<base href="${url.origin}${matchedPrefix}/">`
           );
           
-          // 8. 处理相对路径
           content = content.replace(
             /(href|src|action|data-src|data-href)=["']((?!https?:\/\/|\/\/|\/)[^"']+)["']/gi,
             `$1="${url.origin}${matchedPrefix}/${targetPathBase}$2"`
           );
           
-          // 9. 处理 JSON 资源路径
           content = content.replace(
             new RegExp(`"(url|path|endpoint|src|href)"\\s*:\\s*"https?://${targetDomain}(/[^"]*?)"`, 'gi'),
             `"$1":"${url.origin}${matchedPrefix}$2"`
           );
           
-          // 9.1 处理 JSON 路径中的根路径引用
           content = content.replace(
             /"(url|path|endpoint|src|href)"\s*:\s*"(\/[^"]*?)"/gi,
             `"$1":"${url.origin}${matchedPrefix}$2"`
           );
           
-          // 10. 处理内联 JavaScript 中的路径
           content = content.replace(
             new RegExp(`['"]https?://${targetDomain}(/[^"']*?)['"]`, 'gi'),
             `"${url.origin}${matchedPrefix}$1"`
           );
           
-          // 11. 处理 JavaScript 中的根路径引用
           content = content.replace(
             /([^a-zA-Z0-9_])(['"])(\/[^\/'"]+\/[^'"]*?)(['"])/g,
             `$1$2${url.origin}${matchedPrefix}$3$4`
           );
           
-          // 12. 处理 srcset 属性
           content = content.replace(
             /srcset=["']([^"']+)["']/gi,
             (match, srcset) => {
@@ -454,7 +441,6 @@ export default async (request: Request, context: Context) => {
             }
           );
           
-          // 应用特定网站的替换规则
           if (SPECIAL_REPLACEMENTS[targetDomain as keyof typeof SPECIAL_REPLACEMENTS]) {
             const replacements = SPECIAL_REPLACEMENTS[targetDomain as keyof typeof SPECIAL_REPLACEMENTS];
             for (const replacement of replacements) {
@@ -462,7 +448,6 @@ export default async (request: Request, context: Context) => {
             }
           }
           
-          // 添加修复脚本
           const prefixWithoutSlash = matchedPrefix.substring(1);
           const fixScript = `
           <script>
@@ -470,7 +455,6 @@ export default async (request: Request, context: Context) => {
             const proxyPrefix = '${matchedPrefix}';
             const proxyPrefixName = '${prefixWithoutSlash}';
             
-            // Vercel Next.js 特殊处理
             if (window.location.pathname.startsWith(proxyPrefix)) {
               const originalFetch = window.fetch;
               window.fetch = function(resource, init) {
@@ -516,7 +500,6 @@ export default async (request: Request, context: Context) => {
               }
             }
 
-            // 通用修复
             const generalObserver = new MutationObserver(function(mutations) {
               mutations.forEach(function(mutation) {
                 if (mutation.type === 'childList') {
@@ -571,7 +554,6 @@ export default async (request: Request, context: Context) => {
           }
         }
         
-        // CSS 文件处理
         if (CSS_CONTENT_TYPES.some(type => contentType.includes(type))) {
           content = content.replace(
             new RegExp(`url\\(['"]?https?://${targetDomain}(/[^)'"]*?)['"]?\\)`, 'gi'),
@@ -591,55 +573,55 @@ export default async (request: Request, context: Context) => {
           const cssPath = targetUrl.pathname;
           const cssDir = cssPath.substring(0, cssPath.lastIndexOf('/') + 1);
           
+          // 🔧 这里修复了中文逗号问题
           content = content.replace(
             /url\(['"]?(?!https?:\/\/|\/\/|\/|data:|#)([^)'"]*)['"]?\)/gi,
             `url(${url.origin}${matchedPrefix}${cssDir}$1)`
           );
         }
         
-        // JavaScript 文件处理
         if (JS_CONTENT_TYPES.some(type => contentType.includes(type))) {
-          content = content。替换(
+          content = content.replace(
             new RegExp(`(['"])https?://${targetDomain}(/[^'"]*?)(['"])`, 'gi'),
-            `$1${url。origin}${matchedPrefix}$2$3`
+            `$1${url.origin}${matchedPrefix}$2$3`
           );
           
-          content = content。replace(
-            new RegExp(`(['"])//${targetDomain}(/[^'"]*?)(['"])`， 'gi'),
-            `$1${url。origin}${matchedPrefix}$2$3`
+          content = content.replace(
+            new RegExp(`(['"])//${targetDomain}(/[^'"]*?)(['"])`, 'gi'),
+            `$1${url.origin}${matchedPrefix}$2$3`
           );
           
-          content = content。replace(
-            /(['"])(\/[^'"]*?\.(?:js|css|png|jpg|jpeg|gif|svg|webp|ico|mp3|mp4|webm|ogg|woff|woff2|ttf|eot))(['"])/gi，
-            `$1${url。origin}${matchedPrefix}$2$3`
+          content = content.replace(
+            /(['"])(\/[^'"]*?\.(?:js|css|png|jpg|jpeg|gif|svg|webp|ico|mp3|mp4|webm|ogg|woff|woff2|ttf|eot))(['"])/gi,
+            `$1${url.origin}${matchedPrefix}$2$3`
           );
         }
         
         newResponse = new Response(content, {
-          status: response。status，
-          statusText: response。statusText，
-          headers: response。headers
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers
         });
       } else {
         newResponse = new Response(response.body, {
           status: response.status,
           statusText: response.statusText,
-          headers: response。headers
+          headers: response.headers
         });
       }
       
-      newResponse.headers.set('Access-Control-Allow-Origin', '*');
-      newResponse。headers。set('Access-Control-Allow-Methods'， 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+      newResponse.headers.set('Access-Control-Allow-Origin'， '*');
+      newResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
       newResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Range');
       
-      newResponse。headers。delete('Content-Security-Policy');
+      newResponse.headers.delete('Content-Security-Policy');
       newResponse.headers.delete('Content-Security-Policy-Report-Only');
-      newResponse。headers。delete('X-Frame-Options');
+      newResponse.headers.delete('X-Frame-Options');
       newResponse.headers.delete('X-Content-Type-Options');
       
-      if (HTML_CONTENT_TYPES。some(type => contentType.includes(type))) {
-        newResponse。headers。set('Cache-Control'， 'no-store, no-cache, must-revalidate, proxy-revalidate');
-        newResponse。headers。set('Pragma'， 'no-cache');
+      if (HTML_CONTENT_TYPES.some(type => contentType.includes(type))) {
+        newResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        newResponse.headers.set('Pragma', 'no-cache');
         newResponse.headers.set('Expires', '0');
       } else {
         newResponse.headers.set('Cache-Control', 'public, max-age=86400');
@@ -649,8 +631,8 @@ export default async (request: Request, context: Context) => {
           const location = response.headers.get('location')!;
           const redirectedUrl = new URL(location, targetUrl);
 
-          if (redirectedUrl。origin === targetUrl。origin) {
-              const newLocation = url。origin + matchedPrefix + redirectedUrl。pathname + redirectedUrl.search;
+          if (redirectedUrl.origin === targetUrl.origin) {
+              const newLocation = url.origin + matchedPrefix + redirectedUrl.pathname + redirectedUrl.search;
               context.log(`Rewriting redirect from ${location} to ${newLocation}`);
               newResponse.headers.set('Location', newLocation);
           } else {
@@ -672,6 +654,5 @@ export default async (request: Request, context: Context) => {
     }
   }
 
-  // 如果没有匹配的代理规则，则不处理此请求，交由 Netlify 的其他规则处理
   return;
 };
