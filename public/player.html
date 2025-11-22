@@ -106,6 +106,20 @@
             font-size: 0.8rem;
             z-index: 10;
         }
+        .debug-info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            max-width: 300px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 10;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -122,18 +136,20 @@
             </div>
             <div class="error-message" id="error-message">
                 <h3>视频加载失败</h3>
-                <p>可能的原因:</p>
+                <p id="error-details">可能的原因:</p>
                 <ul>
                     <li>视频源不可用</li>
                     <li>网络连接问题</li>
                     <li>播放器不支持此格式</li>
                 </ul>
                 <p>请选择操作:</p>
+                <button id="retry-proxy" class="retry-button">重试（代理）</button>
                 <button id="retry-direct" class="retry-button">直接访问</button>
-                <button id="retry-proxy" class="retry-button">使用代理</button>
+                <button id="toggle-debug" class="retry-button">查看调试信息</button>
                 <button onclick="window.history.back()" class="retry-button">返回上一页</button>
             </div>
             <div class="source-indicator" id="source-indicator"></div>
+            <div class="debug-info" id="debug-info"></div>
         </div>
     </div>
 
@@ -157,40 +173,81 @@
         let params;
         let originalVideoUrl;
         let isUsingProxy = false;
+        let debugLogs = [];
 
-        // ✅ 修复：创建代理URL的函数
-        function createProxyUrl(url) {
-            // 如果当前页面在 /hanime 路径下，视频URL也应该使用相同前缀
-            if (window.location.pathname.startsWith('/hanime')) {
-                // 解析原始URL
-                try {
-                    const urlObj = new URL(url);
-                    // 返回代理路径: /hanime + 原始路径
-                    return `/hanime${urlObj.pathname}${urlObj.search}`;
-                } catch (e) {
-                    console.error('URL解析失败:', e);
-                    return url;
-                }
+        // 添加调试日志
+        function addDebugLog(message, data = null) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            debugLogs.push(logEntry);
+            console.log(logEntry, data || '');
+            
+            if (data) {
+                debugLogs.push(JSON.stringify(data, null, 2));
             }
             
-            // 通用代理方式
-            return `/proxy/${encodeURIComponent(url)}`;
+            const debugInfo = document.getElementById('debug-info');
+            debugInfo.innerHTML = debugLogs.join('\n');
+        }
+
+        // ✅ 关键修复：创建代理URL，强制所有视频请求通过代理
+        function createProxyUrl(url) {
+            addDebugLog('创建代理URL', { input: url });
+            
+            try {
+                // 如果已经是代理URL，直接返回
+                if (url.startsWith('/proxy/') || url.startsWith('/hanime/')) {
+                    addDebugLog('已是代理URL，直接返回');
+                    return url;
+                }
+                
+                // 解析URL
+                const urlObj = new URL(url);
+                addDebugLog('URL解析成功', {
+                    host: urlObj.host,
+                    pathname: urlObj.pathname,
+                    search: urlObj.search
+                });
+                
+                // 方法1: 如果当前页面在 /hanime 路径下
+                if (window.location.pathname.startsWith('/hanime')) {
+                    // 检查是否是 hanime 相关域名
+                    if (urlObj.host.includes('hanime') || 
+                        urlObj.host.includes('hembed') || 
+                        urlObj.host.includes('vdownload')) {
+                        const proxyPath = `/hanime${urlObj.pathname}${urlObj.search}`;
+                        addDebugLog('使用 /hanime 代理路径', { result: proxyPath });
+                        return proxyPath;
+                    }
+                }
+                
+                // 方法2: 使用通用代理格式 /proxy/完整URL
+                const proxyUrl = `/proxy/${encodeURIComponent(url)}`;
+                addDebugLog('使用 /proxy/ 通用代理', { result: proxyUrl });
+                return proxyUrl;
+                
+            } catch (e) {
+                addDebugLog('URL解析失败', { error: e.message });
+                // 如果解析失败，尝试通用代理
+                return `/proxy/${encodeURIComponent(url)}`;
+            }
         }
 
         // 初始化播放器
         function initPlayer(videoUrl, useProxy = false) {
+            addDebugLog('初始化播放器', {
+                videoUrl: videoUrl,
+                useProxy: useProxy,
+                originalUrl: originalVideoUrl
+            });
+            
             if (dp) {
+                addDebugLog('销毁旧播放器');
                 dp.destroy();
             }
 
             const container = document.getElementById('dplayer');
             const sourceIndicator = document.getElementById('source-indicator');
-            
-            // ✅ 增强：添加调试信息
-            console.log('原始URL:', originalVideoUrl);
-            console.log('使用URL:', videoUrl);
-            console.log('代理模式:', useProxy);
-            console.log('当前路径:', window.location.pathname);
             
             // 显示加载中
             document.getElementById('loading').style.display = 'block';
@@ -202,39 +259,89 @@
             sourceIndicator.style.backgroundColor = useProxy ? 'rgba(30, 144, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)';
 
             try {
+                const isHLS = videoUrl.includes('.m3u8');
+                addDebugLog('视频类型检测', { 
+                    isHLS: isHLS,
+                    url: videoUrl 
+                });
+
                 dp = new DPlayer({
                     container: container,
                     autoplay: true,
                     theme: '#1E90FF',
                     video: {
                         url: videoUrl,
-                        type: videoUrl.includes('.m3u8') ? 'hls' : 'auto',
+                        type: isHLS ? 'hls' : 'auto',
                     },
                     hotkey: true,
                     preload: 'auto',
                     customType: {
                         hls: function(video, player) {
+                            addDebugLog('初始化 HLS 播放器');
+                            
                             const hls = new Hls({
-                                debug: true,  // ✅ 开启调试
+                                debug: false,
                                 enableWorker: true,
                                 lowLatencyMode: true,
                                 backBufferLength: 90,
                                 xhrSetup: function(xhr, url) {
-                                    // ✅ 添加调试日志
-                                    console.log('HLS请求:', url);
-                                    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                                    addDebugLog('HLS XHR 请求', { url: url });
+                                    
+                                    // ✅ 关键：确保所有 HLS 分片请求也通过代理
+                                    if (!url.startsWith('/proxy/') && !url.startsWith('/hanime/')) {
+                                        addDebugLog('⚠️ HLS请求未使用代理，尝试修正');
+                                    }
                                 }
                             });
+                            
                             hls.loadSource(videoUrl);
                             hls.attachMedia(video);
-                            hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                                console.log('✅ M3U8解析成功');
+                            
+                            hls.on(Hls.Events.MANIFEST_PARSED, function(event, data) {
+                                addDebugLog('✅ M3U8 解析成功', {
+                                    levels: data.levels.length,
+                                    firstLevel: data.levels[0]
+                                });
                                 video.play();
                             });
+                            
+                            hls.on(Hls.Events.LEVEL_LOADED, function(event, data) {
+                                addDebugLog('Level 加载完成', {
+                                    level: data.level,
+                                    details: data.details.url
+                                });
+                            });
+                            
+                            hls.on(Hls.Events.FRAG_LOADED, function(event, data) {
+                                addDebugLog('分片加载成功', {
+                                    url: data.frag.url,
+                                    duration: data.frag.duration
+                                });
+                            });
+                            
                             hls.on(Hls.Events.ERROR, function(event, data) {
-                                console.error('❌ HLS错误:', data);
+                                addDebugLog('❌ HLS 错误', {
+                                    type: data.type,
+                                    details: data.details,
+                                    fatal: data.fatal,
+                                    url: data.frag?.url,
+                                    response: data.response
+                                });
+                                
                                 if (data.fatal) {
-                                    showError('HLS播放错误: ' + data.type + ' - ' + data.details);
+                                    switch(data.type) {
+                                        case Hls.ErrorTypes.NETWORK_ERROR:
+                                            addDebugLog('网络错误，尝试恢复');
+                                            hls.startLoad();
+                                            break;
+                                        case Hls.ErrorTypes.MEDIA_ERROR:
+                                            addDebugLog('媒体错误，尝试恢复');
+                                            hls.recoverMediaError();
+                                            break;
+                                        default:
+                                            showError('致命错误: ' + data.details);
+                                            break;
+                                    }
                                 }
                             });
                         }
@@ -242,70 +349,100 @@
                 });
 
                 dp.on('loadstart', function() {
+                    addDebugLog('视频开始加载');
                     hideLoading();
                 });
 
                 dp.on('loadeddata', function() {
+                    addDebugLog('✅ 视频数据加载完成');
                     hideLoading();
                 });
 
-                dp.于('error'， function() {
-                    console.error('播放器错误');
+                dp.on('canplay', function() {
+                    addDebugLog('✅ 视频可以播放');
+                });
+
+                dp.on('error', function(e) {
+                    addDebugLog('❌ 播放器错误', e);
                     showError('播放器加载视频失败');
                 });
 
                 // 超时检测
                 setTimeout(function() {
-                    if (dp。video。readyState === 0) {
-                        showError('视频加载超时');
+                    if (dp && dp.video && dp.video.readyState === 0) {
+                        addDebugLog('⏱️ 视频加载超时');
+                        showError('视频加载超时（15秒）');
                     }
-                }， 15000);
+                }, 15000);
+                
             } catch (error) {
-                console。error('播放器初始化失败:'， error);
-                showError('播放器初始化失败: ' + error。message);
+                addDebugLog('❌ 播放器初始化失败', {
+                    error: error.message,
+                    stack: error.stack
+                });
+                showError('播放器初始化失败: ' + error.message);
             }
         }
 
         // DOM加载完成后初始化
-        document。addEventListener('DOMContentLoaded'， function() {
+        document.addEventListener('DOMContentLoaded', function() {
             params = getQueryParams();
             originalVideoUrl = params.url;
-            const videoTitle = params.title || '未知视频';
-            const sourceText = params.source ? `(来源: ${params.source})` : '';
+            const videoTitle = params。title || '未知视频';
+            const sourceText = params。source ? `(来源: ${params。source})` : '';
             
-            document.getElementById('video-title').textContent = `${videoTitle} ${sourceText}`;
-            document。title = videoTitle;
+            document.getElementById('video-title')。textContent = `${videoTitle} ${sourceText}`;
+            document.title = videoTitle;
+
+            addDebugLog('页面初始化'， {
+                originalVideoUrl: originalVideoUrl，
+                videoTitle: videoTitle,
+                currentPath: window.location.pathname,
+                queryParams: params
+            });
 
             if (!originalVideoUrl) {
                 showError('缺少视频URL参数');
+                addDebugLog('❌ 缺少视频URL参数');
                 return;
             }
 
-            // ✅ 修改初始化逻辑：根据当前路径决定使用哪种代理方式
+            // ✅ 强制使用代理
             const proxyUrl = createProxyUrl(originalVideoUrl);
-            console。log('生成的代理URL:'， proxyUrl);
+            addDebugLog('最终使用的播放URL'， { proxyUrl: proxyUrl });
             
-            // 首先尝试使用代理
+            // 默认使用代理模式
             initPlayer(proxyUrl， true);
 
             // 设置重试按钮事件
             document。getElementById('retry-direct')。addEventListener('click'， function() {
-                initPlayer(originalVideoUrl， false);
+                addDebugLog('用户点击：直接访问');
+                initPlayer(originalVideoUrl, false);
             });
 
-            document.getElementById('retry-proxy').addEventListener('click', function() {
-                initPlayer(createProxyUrl(originalVideoUrl)， true);
+            document。getElementById('retry-proxy')。addEventListener('click'， function() {
+                addDebugLog('用户点击：使用代理重试');
+                initPlayer(createProxyUrl(originalVideoUrl), true);
+            });
+
+            // 调试信息切换
+            document。getElementById('toggle-debug')。addEventListener('click'， function() {
+                const debugInfo = document。getElementById('debug-info');
+                debugInfo。style。display = debugInfo。style.display === 'none' ? 'block' : 'none';
             });
         });
 
         function hideLoading() {
-            document。getElementById('loading')。style。display = 'none';
+            document.getElementById('loading').style.display = 'none';
         }
 
         function showError(message) {
             hideLoading();
-            console。error(message);
-            const errorElement = document.getElementById('error-message');
+            addDebugLog('显示错误'， { message: message });
+            
+            const errorElement = document。getElementById('error-message');
+            const errorDetails = document。getElementById('error-details');
+            errorDetails。textContent = message;
             errorElement。style。display = 'block';
         }
     </script>
