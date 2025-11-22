@@ -46,8 +46,8 @@ const PROXY_CONFIG = {
   hanime: "hanime1.me",
   x: "hx.com",
   github: "github.com",
-  "linux.do": "linux.do"，  // ✅ 用引号括起来
-  "mail.google": "mail.google.com"，  // ✅ 用引号括起来
+  "linux.do": "linux.do",
+  "mail.google": "mail.google.com",
   pixiv: "pixiv.net",
   youtube: "youtube.com",
 } as const;
