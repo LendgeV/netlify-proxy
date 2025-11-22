@@ -117,28 +117,20 @@ const SPECIAL_REPLACEMENTS: Record<string, Array<{pattern: RegExp, replacement: 
       pattern: /(?:src|href|content)=['"](?:\.?\/)?([^"']*\.(css|js|png|jpg|jpeg|gif|svg|webp|ico))["']/gi,
       replacement: (match: string, path: string, ext: string) => {
         if (path.startsWith('http')) return match;
-        // 🔧 排除 /proxy/ 路径
-        if (path.startsWith('proxy/')) return match;
-        if (path.startsWith('/proxy/')) return match;
-        
         if (path.startsWith('/')) {
           return match.replace(`"/${path.slice(1)}`, `"/tv/${path.slice(1)}`);
         }
         return match.replace(`"${path}`, `"/tv/${path}`);
       }
-    },
+    }，
     {
-      pattern: /url\(['"]?(?:\.?\/)?([^'")]*\.(png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot))['"]?\)/gi,
-      replacement: (match: string, path: string) => {
+      pattern: /url\(['"]?(?:\.?\/)?([^'")]*\.(png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot))['"]?\)/gi，
+      replacement: (match: string， path: string) => {
         if (path.startsWith('http')) return match;
-        // 🔧 排除 /proxy/ 路径
-        if (path.startsWith('proxy/')) return match;
-        if (path.startsWith('/proxy/')) return match;
-        
         if (path.startsWith('/')) {
           return match.replace(`(/${path.slice(1)}`, `(/tv/${path.slice(1)}`);
         }
-        return match.replace(`(${path}`, `(/tv/${path}`);
+        return match.替换(`(${path}`， `(/tv/${path}`);
       }
     }
   ]
@@ -161,7 +153,7 @@ function normalizePathPrefix(prefix: string): string {
   return prefix.startsWith('/') ? prefix : '/' + prefix;
 }
 
-export default async (request: Request, context: Context) => {
+export 默认 async (request: Request, context: Context) => {
   // 处理 CORS 预检请求
   if (request.method === "OPTIONS") {
     return new Response(null, {
@@ -169,7 +161,7 @@ export default async (request: Request, context: Context) => {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Accept, Origin, Range",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Accept, Origin, Range"，
         "Access-Control-Max-Age": "86400",
         "Cache-Control": "public, max-age=86400"
       }
@@ -182,7 +174,7 @@ export default async (request: Request, context: Context) => {
   // 特殊处理 /proxy/ 路径
   if (path.startsWith('/proxy/')) {
     try {
-      let targetUrlString = path.substring('/proxy/'.length);
+      let targetUrlString = path。substring('/proxy/'.length);
       
       if (targetUrlString.startsWith('http%3A%2F%2F') || targetUrlString.startsWith('https%3A%2F%2F')) {
         targetUrlString = decodeURIComponent(targetUrlString);
@@ -191,23 +183,23 @@ export default async (request: Request, context: Context) => {
       targetUrlString = normalizeUrl(targetUrlString);
       const targetUrl = new URL(targetUrlString);
       
-      if (url.search && !targetUrlString.includes('?')) {
+      if (url.search && !targetUrlString。includes('?')) {
         targetUrl.search = url.search;
       }
       
-      context.log(`Proxying generic request to: ${targetUrl.toString()}`);
+      context。log(`Proxying generic request to: ${targetUrl。toString()}`);
       
       const proxyRequest = new Request(targetUrl.toString(), {
         method: request.method,
-        headers: request.headers,
-        body: request.body,
-        redirect: 'manual',
+        headers: request.headers，
+        body: request。body，
+        redirect: 'manual'，
       });
       
-      proxyRequest.headers.set("Host", targetUrl.host);
+      proxyRequest。headers。set("Host"， targetUrl。host);
       
-      const clientIp = context.ip || request.headers.get('x-nf-client-connection-ip') || "";
-      proxyRequest.headers.set('X-Forwarded-For', clientIp);
+      const clientIp = context.ip || request。headers.get('x-nf-client-connection-ip') || "";
+      proxyRequest。headers。set('X-Forwarded-For', clientIp);
       proxyRequest.headers.set('X-Forwarded-Host', url.host);
       proxyRequest.headers.set('X-Forwarded-Proto', url.protocol.replace(':', ''));
       
@@ -218,7 +210,7 @@ export default async (request: Request, context: Context) => {
         try {
           const refUrl = new URL(referer);
           const newReferer = `${targetUrl.protocol}//${targetUrl.host}${refUrl.pathname}${refUrl.search}`;
-          proxyRequest.headers.set('referer', newReferer);
+          proxyRequest。headers.set('referer', newReferer);
         } catch(e) {
           // 保持原样
         }
@@ -342,7 +334,6 @@ export default async (request: Request, context: Context) => {
         const targetPathBase = targetUrl.pathname.substring(0, targetUrl.pathname.lastIndexOf('/') + 1);
         
         if (HTML_CONTENT_TYPES.some(type => contentType.includes(type))) {
-          // 🔧 修改：排除 /proxy/ 路径的重写
           content = content.replace(
             new RegExp(`(href|src|action|content)=["']https?://${targetDomain}(/[^"']*?)["']`, 'gi'),
             `$1="${url.origin}${matchedPrefix}$2"`
@@ -353,9 +344,8 @@ export default async (request: Request, context: Context) => {
             `$1="${url.origin}${matchedPrefix}$2"`
           );
           
-          // 🔧 修改：使用负向前瞻排除 /proxy/ 路径
           content = content.replace(
-            new RegExp(`(href|src|action|content)=["'](/(?!proxy/)[^"']*?)["']`, 'gi'),
+            new RegExp(`(href|src|action|content)=["'](/[^"']*?)["']`, 'gi'),
             `$1="${url.origin}${matchedPrefix}$2"`
           );
           
@@ -369,9 +359,8 @@ export default async (request: Request, context: Context) => {
             `url(${url.origin}${matchedPrefix}$1)`
           );
           
-          // 🔧 修改：排除 /proxy/ 路径
           content = content.replace(
-            new RegExp(`url\\(['"]?(/(?!proxy/)[^)'"]*?)['"]?\\)`, 'gi'),
+            new RegExp(`url\\(['"]?(/[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
           
@@ -390,9 +379,8 @@ export default async (request: Request, context: Context) => {
             `"$1":"${url.origin}${matchedPrefix}$2"`
           );
           
-          // 🔧 修改：排除 /proxy/ 路径
           content = content.replace(
-            /"(url|path|endpoint|src|href)"\s*:\s*"(\/(?!proxy\/)[^"]*?)"/gi,
+            /"(url|path|endpoint|src|href)"\s*:\s*"(\/[^"]*?)"/gi,
             `"$1":"${url.origin}${matchedPrefix}$2"`
           );
           
@@ -428,10 +416,7 @@ export default async (request: Request, context: Context) => {
                     );
                   }
                 } else if (srcUrl.startsWith('/')) {
-                  // 🔧 修改：排除 /proxy/ 路径
-                  if (!srcUrl.startsWith('/proxy/')) {
-                    newUrl = `${url.origin}${matchedPrefix}${srcUrl}`;
-                  }
+                  newUrl = `${url.origin}${matchedPrefix}${srcUrl}`;
                 }
                 
                 return descriptor ? `${newUrl} ${descriptor}` : newUrl;
@@ -459,11 +444,6 @@ export default async (request: Request, context: Context) => {
               const originalFetch = window.fetch;
               window.fetch = function(resource, init) {
                 if (typeof resource === 'string') {
-                  // 🔧 排除 /proxy/ 路径
-                  if (resource.startsWith('/proxy/')) {
-                    return originalFetch.call(this, resource, init);
-                  }
-                  
                   if (resource.includes('/_next/data/') && !resource.startsWith(proxyPrefix)) {
                     resource = proxyPrefix + resource;
                   }
@@ -516,11 +496,6 @@ export default async (request: Request, context: Context) => {
                           if (el.hasAttribute(attr)) {
                             let val = el.getAttribute(attr);
                             if (val && !val.match(/^(https?:|\/\/|${url.origin})/)) {
-                              // 🔧 排除 /proxy/ 路径
-                              if (val.startsWith('/proxy/')) {
-                                return;
-                              }
-                              
                               if (val.startsWith('/')) {
                                 if (window.location.pathname.startsWith(proxyPrefix) && val.startsWith('/_next/') && !val.startsWith(proxyPrefix)) {
                                   el.setAttribute(attr, proxyPrefix + val);
@@ -537,7 +512,7 @@ export default async (request: Request, context: Context) => {
                       elementsWithStyle.forEach(function(el) {
                         let style = el.getAttribute('style');
                         if (style) {
-                          style = style.replace(/url\\(['"]?(\\/(?!proxy\\/)[^)'"]*?)['"]?\\)/gi, 
+                          style = style.replace(/url\\(['"]?(\\/[^)'"]*?)['"]?\\)/gi, 
                                                'url(${url.origin}${matchedPrefix}$1)');
                           el.setAttribute('style', style);
                         }
@@ -575,15 +550,15 @@ export default async (request: Request, context: Context) => {
             `url(${url.origin}${matchedPrefix}$1)`
           );
           
-          // 🔧 修改：排除 /proxy/ 路径
           content = content.replace(
-            new RegExp(`url\\(['"]?(/(?!proxy/)[^)'"]*?)['"]?\\)`, 'gi'),
+            new RegExp(`url\\(['"]?(/[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
           
           const cssPath = targetUrl.pathname;
           const cssDir = cssPath.substring(0, cssPath.lastIndexOf('/') + 1);
           
+          // 🔧 这里修复了中文逗号问题
           content = content.replace(
             /url\(['"]?(?!https?:\/\/|\/\/|\/|data:|#)([^)'"]*)['"]?\)/gi,
             `url(${url.origin}${matchedPrefix}${cssDir}$1)`
@@ -601,64 +576,63 @@ export default async (request: Request, context: Context) => {
             `$1${url.origin}${matchedPrefix}$2$3`
           );
           
-          // 🔧 修改：排除 /proxy/ 路径
           content = content.replace(
-            /(['"])(\/(?!proxy\/)(?:[^'"]*?\.(?:js|css|png|jpg|jpeg|gif|svg|webp|ico|mp3|mp4|webm|ogg|woff|woff2|ttf|eot)))(['"])/gi,
-            `$1${url.origin}${matchedPrefix}$2$3`
+            /(['"])(\/[^'"]*?\.(?:js|css|png|jpg|jpeg|gif|svg|webp|ico|mp3|mp4|webm|ogg|woff|woff2|ttf|eot))(['"])/gi，
+            `$1${url。origin}${matchedPrefix}$2$3`
           );
         }
         
         newResponse = new Response(content, {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers
+          status: response。status，
+          statusText: response。statusText，
+          headers: response。headers
         });
       } else {
         newResponse = new Response(response.body, {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers
+          status: response。status，
+          statusText: response。statusText，
+          headers: response。headers
         });
       }
       
-      newResponse.headers.set('Access-Control-Allow-Origin', '*');
-      newResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-      newResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Range');
+      newResponse。headers。set('Access-Control-Allow-Origin'， '*');
+      newResponse。headers。set('Access-Control-Allow-Methods'， 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+      newResponse。headers。set('Access-Control-Allow-Headers'， 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Range');
       
-      newResponse.headers.delete('Content-Security-Policy');
-      newResponse.headers.delete('Content-Security-Policy-Report-Only');
-      newResponse.headers.delete('X-Frame-Options');
-      newResponse.headers.delete('X-Content-Type-Options');
+      newResponse。headers。delete('Content-Security-Policy');
+      newResponse。headers。delete('Content-Security-Policy-Report-Only');
+      newResponse。headers。delete('X-Frame-Options');
+      newResponse。headers。delete('X-Content-Type-Options');
       
-      if (HTML_CONTENT_TYPES.some(type => contentType.includes(type))) {
-        newResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-        newResponse.headers.set('Pragma', 'no-cache');
-        newResponse.headers.set('Expires', '0');
+      if (HTML_CONTENT_TYPES。some(type => contentType.includes(输入))) {
+        newResponse。headers。set('Cache-Control'， 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        newResponse。headers。set('Pragma'， 'no-cache');
+        newResponse。headers。set('Expires'， '0');
       } else {
-        newResponse.headers.set('Cache-Control', 'public, max-age=86400');
+        newResponse。headers。set('Cache-Control'， 'public, max-age=86400');
       }
       
-      if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
+      if (response。status >= 300 && response。status < 400 && response。headers。has('location')) {
           const location = response.headers.get('location')!;
           const redirectedUrl = new URL(location, targetUrl);
 
-          if (redirectedUrl.origin === targetUrl.origin) {
+          if (redirectedUrl。origin === targetUrl。origin) {
               const newLocation = url.origin + matchedPrefix + redirectedUrl.pathname + redirectedUrl.search;
-              context.log(`Rewriting redirect from ${location} to ${newLocation}`);
-              newResponse.headers.set('Location', newLocation);
+              context。log(`Rewriting redirect from ${location} to ${newLocation}`);
+              newResponse.headers。set('Location', newLocation);
           } else {
-              context.log(`Proxying redirect to external location: ${location}`);
+              context。log(`Proxying redirect to external location: ${location}`);
           }
       }
       
       return newResponse;
 
     } catch (error) {
-      context.log("Error fetching target URL:", error);
+      context。log("Error fetching target URL:"， error);
       return new Response("代理请求失败", { 
         status: 502,
         headers: {
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin': '*'，
           'Content-Type': 'text/plain;charset=UTF-8'
         }
       });
