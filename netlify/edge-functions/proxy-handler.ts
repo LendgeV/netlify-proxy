@@ -285,7 +285,7 @@ async function handleDirectProxy(request: Request, context: Context, url: URL) {
           
           // 重写根相对URL
           content = content.replace(
-            /(href|src|action|content|data-src|data-href)=["'](\\/[^"']*?)["']/gi,
+            /(href|src|action|content|data-src|data-href)=["'](\/[^"']*?)["']/gi,
             `$1="${url.origin}${targetOrigin}$2"`
           );
           
