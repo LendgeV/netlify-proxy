@@ -605,7 +605,7 @@ export default async (request: Request, context: Context) => {
             
             // 处理相对路径和绝对路径
             if (line.startsWith('http://') || line.startsWith('https://')) {
-              // 完整URL，检查是否是目标域名
+              // 完整URL,检查是否是目标域名
               if (line.includes(targetUrl.host)) {
                 const urlObj = new URL(line);
                 return `${url.origin}${matchedPrefix}${urlObj.pathname}${urlObj.search}`;
@@ -632,43 +632,43 @@ export default async (request: Request, context: Context) => {
         }
         
         newResponse = new Response(content, {
-          status: response。status，
-          statusText: response。statusText，
-          headers: response。headers
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers
         });
       } else {
         newResponse = new Response(response.body, {
-          status: response。status，
-          statusText: response。statusText，
-          headers: response。headers
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers
         });
       }
       
-      newResponse。headers。set('Access-Control-Allow-Origin'， '*');
-      newResponse。headers。set('Access-Control-Allow-Methods'， 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-      newResponse。headers。set('Access-Control-Allow-Headers'， 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Range');
+      newResponse.headers.set('Access-Control-Allow-Origin', '*');
+      newResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+      newResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Range');
       
-      newResponse。headers。delete('Content-Security-Policy');
-      newResponse。headers。delete('Content-Security-Policy-Report-Only');
-      newResponse。headers。delete('X-Frame-Options');
-      newResponse。headers。delete('X-Content-Type-Options');
+      newResponse.headers.delete('Content-Security-Policy');
+      newResponse.headers.delete('Content-Security-Policy-Report-Only');
+      newResponse.headers.delete('X-Frame-Options');
+      newResponse.headers.delete('X-Content-Type-Options');
       
-      if (HTML_CONTENT_TYPES。some(type => contentType.includes(type))) {
-        newResponse。headers。set('Cache-Control'， 'no-store, no-cache, must-revalidate, proxy-revalidate');
-        newResponse。headers。set('Pragma'， 'no-cache');
-        newResponse。headers。set('Expires'， '0');
+      if (HTML_CONTENT_TYPES.some(type => contentType.includes(type))) {
+        newResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        newResponse.headers.set('Pragma', 'no-cache');
+        newResponse.headers.set('Expires', '0');
       } else {
-        newResponse。headers。set('Cache-Control'， 'public, max-age=86400');
+        newResponse.headers.set('Cache-Control', 'public, max-age=86400');
       }
       
-      if (response。status >= 300 && response。status < 400 && response。headers。has('location')) {
+      if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
           const location = response.headers.get('location')!;
           const redirectedUrl = new URL(location, targetUrl);
 
-          if (redirectedUrl。origin === targetUrl。origin) {
+          if (redirectedUrl.origin === targetUrl.origin) {
               const newLocation = url.origin + matchedPrefix + redirectedUrl.pathname + redirectedUrl.search;
-              context。log(`Rewriting redirect from ${location} to ${newLocation}`);
-              newResponse。headers。set('Location'， newLocation);
+              context.log(`Rewriting redirect from ${location} to ${newLocation}`);
+              newResponse.headers.set('Location', newLocation);
           } else {
               context.log(`Proxying redirect to external location: ${location}`);
           }
@@ -677,7 +677,7 @@ export default async (request: Request, context: Context) => {
       return newResponse;
 
     } catch (error) {
-      context。log("Error fetching target URL:", error);
+      context.log("Error fetching target URL:", error);
       return new Response("代理请求失败", { 
         status: 502,
         headers: {
