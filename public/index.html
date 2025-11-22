@@ -1219,13 +1219,7 @@
             { name: 'Void', path: '/void', target: 'api.voidai.app', type: 'api', icon: '🌌' },
           
             // 网站服务
-            { name: 'Hanime', path: '/hanime', target: 'hanime1.me', type: 'website', icon: '🎬' },
-            { name: 'X', path: '/x', target: 'hx.com', type: 'website', icon: '🐦' },
-            { name: 'GitHub', path: '/github', target: 'github.com', type: 'website', icon: '🐱' },
-            { name: 'Linux.do', path: '/linux.do', target: 'linux.do', type: 'website', icon: '🐧' },
-            { name: 'Gmail', path: '/mail.google', target: 'mail.google.com', type: 'website', icon: '📧' },
-            { name: 'Pixiv', path: '/pixiv', target: 'pixiv.net', type: 'website', icon: '🎨' },
-            { name: 'YouTube', path: '/youtube', target: 'youtube.com', type: 'website', icon: '📺' }
+            { name: 'Hanime', path: '/hanime', target: 'hanime1.me', type: 'website', icon: '🎬' }
         ];
       
         const BASE_URL = 'https://v-proxy.netlify.app';
@@ -1827,123 +1821,6 @@
                 trackEvent('Filter', 'Click', tab.dataset.filter);
             });
         });
-      
-        // ===== Easter Egg：连续点击 Logo =====
-        let logoClickCount = 0;
-        let logoClickTimeout;
-      
-        logoImage.addEventListener('click', () => {
-            logoClickCount++;
-            clearTimeout(logoClickTimeout);
-          
-            if (logoClickCount === 5) {
-                console.log('%c🎉 彩蛋解锁！', 'font-size: 20px; color: #6366f1; font-weight: bold;');
-                console.log('%c你发现了隐藏功能！', 'font-size: 14px; color: #10b981;');
-                console.log('%c提示：尝试按下 Konami Code（↑↑↓↓←→←→BA）', 'font-size: 12px; color: #f59e0b;');
-              
-                // 临时添加彩虹边框
-                logoImage.style.animation = 'rainbow 2s linear infinite';
-                const style = document.createElement('style');
-                style.textContent = `
-                    @keyframes rainbow {
-                        0% { border-color: #ef4444; }
-                        16% { border-color: #f59e0b; }
-                        33% { border-color: #10b981; }
-                        50% { border-color: #3b82f6; }
-                        66% { border-color: #6366f1; }
-                        83% { border-color: #8b5cf6; }
-                        100% { border-color: #ef4444; }
-                    }
-                `;
-                document.head.appendChild(style);
-              
-                setTimeout(() => {
-                    logoImage.style.animation = '';
-                    style.remove();
-                }, 4000);
-              
-                logoClickCount = 0;
-            }
-          
-            logoClickTimeout = setTimeout(() => {
-                logoClickCount = 0;
-            }, 1000);
-        });
-      
-        // ===== Konami Code 彩蛋 =====
-        const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
-        let konamiIndex = 0;
-      
-        document.addEventListener('keydown', (e) => {
-            if (e.key === konamiCode[konamiIndex]) {
-                konamiIndex++;
-                if (konamiIndex === konamiCode.length) {
-                    activateKonamiEgg();
-                    konamiIndex = 0;
-                }
-            } else {
-                konamiIndex = 0;
-            }
-        });
-      
-        function activateKonamiEgg() {
-            console.log('%c🎊 Konami Code 激活！', 'font-size: 24px; color: #6366f1; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);');
-          
-            // 创建粒子爆炸效果
-            for (let i = 0; i < 50; i++) {
-                setTimeout(() => {
-                    createParticle();
-                }, i * 20);
-            }
-        }
-      
-        function createParticle() {
-            const particle = document.createElement('div');
-            const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#6366f1', '#8b5cf6'];
-            const color = colors[Math.floor(Math.random() * colors.length)];
-          
-            particle.style.cssText = `
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                width: 10px;
-                height: 10px;
-                background: ${color};
-                border-radius: 50%;
-                pointer-events: none;
-                z-index: 9999;
-            `;
-          
-            document.body.appendChild(particle);
-          
-            const angle = Math.random() * Math.PI * 2;
-            const velocity = 200 + Math.random() * 200;
-            const vx = Math.cos(angle) * velocity;
-            const vy = Math.sin(angle) * velocity;
-          
-            let x = 0, y = 0;
-            let opacity = 1;
-            const gravity = 500;
-            let time = 0;
-          
-            function animate() {
-                time += 0.016;
-                x = vx * time;
-                y = vy * time + 0.5 * gravity * time * time;
-                opacity = Math.max(0, 1 - time * 0.8);
-              
-                particle.style.transform = `translate(${x}px, ${y}px)`;
-                particle.style.opacity = opacity;
-              
-                if (opacity > 0 && y < window.innerHeight) {
-                    requestAnimationFrame(animate);
-                } else {
-                    particle.remove();
-                }
-            }
-          
-            animate();
-        }
       
         // ===== 最终初始化确认 =====
         console.log('%c✓ 所有功能已加载完成', 'color: #10b981; font-weight: bold;');
