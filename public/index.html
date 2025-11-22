@@ -835,16 +835,16 @@
         animateGlow();
         
         // 鼠标进入页面显示光晕
-        document。addEventListener('mouseenter'， () => {
-            cursorGlow。style。opacity = '1';
+        document.addEventListener('mouseenter', () => {
+            cursorGlow.style.opacity = '1';
         });
         
-        document。addEventListener('mouseleave'， () => {
-            cursorGlow。style。opacity = '0';
+        document.addEventListener('mouseleave', () => {
+            cursorGlow.style.opacity = '0';
         });
         
         // ===== 统计信息实时更新（数字滚动动画） =====
-        function animateCount(element， target, duration = 1000) {
+        function animateCount(element, target, duration = 1000) {
             const start = 0;
             const increment = target / (duration / 16);
             let current = start;
@@ -852,30 +852,30 @@
             const timer = setInterval(() => {
                 current += increment;
                 if (current >= target) {
-                    element。textContent = target;
+                    element.textContent = target;
                     clearInterval(timer);
                 } else {
-                    element。textContent = Math。floor(current);
+                    element.textContent = Math.floor(current);
                 }
-            }， 16);
+            }, 16);
         }
         
         // ===== 响应式：移动端触摸优化 =====
-        if ('ontouchstart' 在 window) {
+        if ('ontouchstart' in window) {
             // 移动端禁用光晕效果
-            cursorGlow。style。display = 'none';
+            cursorGlow.style.display = 'none';
             
             // 优化卡片点击区域
-            document。querySelectorAll('.service-card')。forEach(card => {
-                card。style。minHeight = '44px'; // iOS 推荐最小触摸区域
+            document.querySelectorAll('.service-card').forEach(card => {
+                card.style.minHeight = '44px'; // iOS 推荐最小触摸区域
             });
         }
         
         // ===== 页面可见性 API：标签页切换优化 =====
-        document。addEventListener('visibilitychange'， () => {
-            if (document。hidden) {
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
                 // 页面隐藏时暂停动画
-                cursorGlow。style。display = 'none';
+                cursorGlow.style.display = 'none';
             } else {
                 // 页面显示时恢复动画
                 if (!('ontouchstart' in window)) {
@@ -885,9 +885,9 @@
         });
         
         // ===== 控制台彩蛋 =====
-        console。log('%c🚀 V Proxy'， 'font-size: 24px; font-weight: bold; color: #6366f1;');
-        console。log('%c高性能边缘代理服务'， 'font-size: 14px; color: #888;');
-        console。log('%c由 Netlify Edge Functions 驱动'， 'font-size: 12px; color: #666; font-style: italic;');
+        console.log('%c🚀 V Proxy', 'font-size: 24px; font-weight: bold; color: #6366f1;');
+        console.log('%c高性能边缘代理服务', 'font-size: 14px; color: #888;');
+        console.log('%c由 Netlify Edge Functions 驱动', 'font-size: 12px; color: #666; font-style: italic;');
         console.log('%c\n💡 提示：点击任意卡片即可复制完整 URL', 'font-size: 12px; color: #10b981;');
         console.log('%c⌨️  快捷键：Cmd/Ctrl + K 聚焦搜索', 'font-size: 12px; color: #f59e0b;');
     </script>
