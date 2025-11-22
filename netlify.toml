@@ -1,22 +1,16 @@
 # netlify.toml
 
+
 [build]
-  publish = "public"
+  # 假设你的静态内容在 public 目录，如果不是，请修改
+  # 如果没有构建步骤，可以注释掉 command
+  # command = "echo 'No build command'"
+  publish = "public" # 确保这个目录存在或与你的项目匹配
 
-# --- 静态页面路由 ---
-# 根路径显示 index.html
-[[edge_functions]]
-  function = "page-handler"
-  path = "/"
+# --- Edge Functions 配置 ---
 
-# /kingv 路径显示页面
+# 使用一个通配符路径将所有请求发送到 proxy-handler 函数
+# 函数内部逻辑将决定是否进行代理
 [[edge_functions]]
-  function = "page-handler"
-  path = "/kingv"
-
-# --- 代理路由 ---
-# 其他所有路径走代理逻辑
-[[edge_functions]]
-  function = "proxy-handler"
+  function = "proxy-handler" # 对应 netlify/edge-functions/proxy-handler.ts
   path = "/*"
-  # 注意：Netlify 按顺序匹配，更具体的路径会优先匹配
