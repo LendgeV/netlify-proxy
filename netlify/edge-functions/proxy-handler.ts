@@ -582,7 +582,7 @@ export default async (request: Request, context: Context) => {
         }
       
         newResponse = new Response(content, {
-          status: response.status,
+          status: response。status，
           statusText: response。statusText，
           headers: response。headers
         });
@@ -620,7 +620,7 @@ export default async (request: Request, context: Context) => {
               context。log(`Rewriting redirect from ${location} to ${newLocation}`);
               newResponse。headers。set('Location'， newLocation);
           } else {
-              context.log(`Proxying redirect to external location: ${location}`);
+              context。log(`Proxying redirect to external location: ${location}`);
           }
       }
     
