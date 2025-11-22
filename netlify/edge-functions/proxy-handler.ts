@@ -47,23 +47,8 @@ const PROXY_CONFIG = {
   navy: "api.navy",
   void: "api.voidai.app",
 
-  // ===== 社交/通讯 API =====
-  discord: "discord.com/api",
-  telegram: "api.telegram.org",
-
-  // ===== 其他 AI 服务 =====
-  cohere: "api.cohere.ai",
-  huggingface: "api-inference.huggingface.co",
-  together: "api.together.xyz",
-  novita: "api.novita.ai",
-  portkey: "api.portkey.ai",
-  fireworks: "api.fireworks.ai",
-  meta: "www.meta.ai/api",
-
   // ===== 任意网址代理 =====
   hanime: "hanime1.me",
-  hexo: "hexo-gally.vercel.app",
-  tv: "tv.gally.ddns-ip.net",
 } as const;
 
 // 需要修复路径的内容类型
