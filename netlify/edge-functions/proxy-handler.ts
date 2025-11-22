@@ -210,7 +210,7 @@ export default async (request: Request, context: Context) => {
         redirect: 'manual',
       });
       
-      // ✅ 关键修复：设置正确的请求头，伪装成来自目标网站
+      // ✅ 关键修复：设置正确的请求头,伪装成来自目标网站
       proxyRequest.headers.set("Host", targetUrl.host);
       proxyRequest.headers.set("User-Agent", request.headers.get("User-Agent") || "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
       
@@ -240,7 +240,7 @@ export default async (request: Request, context: Context) => {
         }
       });
       
-      // ✅ 不要设置 accept-encoding，让 CDN 直接返回未压缩内容
+      // ✅ 不要设置 accept-encoding,让 CDN 直接返回未压缩内容
       proxyRequest.headers.delete('accept-encoding');
       
       const response = await fetch(proxyRequest);
@@ -457,9 +457,9 @@ export default async (request: Request, context: Context) => {
           context.log('M3U8 content rewritten');
         }
         
-        newResponse = new Response(content, {
+        newResponse = new Response(content， {
           status: response.status,
-          statusText: response。statusText，
+          statusText: response.statusText,
           headers: response。headers
         });
       } else {
@@ -491,7 +491,7 @@ export default async (request: Request, context: Context) => {
         newResponse。headers。set('Cache-Control'， 'public, max-age=86400');
       }
       
-      if (response。status >= 300 && response。status < 400 && response。headers。has('location')) {
+      if (response。status >= 300 && response。status < 400 && response。headers.has('location')) {
           const location = response.headers.get('location')!;
           const redirectedUrl = new URL(location, targetUrl);
 
@@ -500,14 +500,14 @@ export default async (request: Request, context: Context) => {
               context。log(`Rewriting redirect from ${location} to ${newLocation}`);
               newResponse。headers。set('Location'， newLocation);
           } else {
-              context。log(`Proxying redirect to external location: ${location}`);
+              context.log(`Proxying redirect to external location: ${location}`);
           }
       }
       
       return newResponse;
 
     } catch (error) {
-      context。log("Error fetching target URL:"， error);
+      context。log("Error fetching target URL:", error);
       return new Response("代理请求失败", { 
         status: 502,
         headers: {
