@@ -122,15 +122,15 @@ const SPECIAL_REPLACEMENTS: Record<string, Array<{pattern: RegExp, replacement: 
         }
         return match.replace(`"${path}`, `"/tv/${path}`);
       }
-    }，
+    },
     {
-      pattern: /url\(['"]?(?:\.?\/)?([^'")]*\.(png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot))['"]?\)/gi，
-      replacement: (match: string， path: string) => {
+      pattern: /url\(['"]?(?:\.?\/)?([^'")]*\.(png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot))['"]?\)/gi,
+      replacement: (match: string, path: string) => {
         if (path.startsWith('http')) return match;
         if (path.startsWith('/')) {
           return match.replace(`(/${path.slice(1)}`, `(/tv/${path.slice(1)}`);
         }
-        return match.替换(`(${path}`， `(/tv/${path}`);
+        return match.replace(`(${path}`, `(/tv/${path}`);
       }
     }
   ]
@@ -153,7 +153,7 @@ function normalizePathPrefix(prefix: string): string {
   return prefix.startsWith('/') ? prefix : '/' + prefix;
 }
 
-export 默认 async (request: Request, context: Context) => {
+export default async (request: Request, context: Context) => {
   // 处理 CORS 预检请求
   if (request.method === "OPTIONS") {
     return new Response(null, {
@@ -161,7 +161,7 @@ export 默认 async (request: Request, context: Context) => {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Accept, Origin, Range"，
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Accept, Origin, Range",
         "Access-Control-Max-Age": "86400",
         "Cache-Control": "public, max-age=86400"
       }
@@ -174,74 +174,74 @@ export 默认 async (request: Request, context: Context) => {
   // 特殊处理 /proxy/ 路径
   if (path.startsWith('/proxy/')) {
     try {
-      let targetUrlString = path。substring('/proxy/'.length);
-      
+      let targetUrlString = path.substring('/proxy/'.length);
+    
       if (targetUrlString.startsWith('http%3A%2F%2F') || targetUrlString.startsWith('https%3A%2F%2F')) {
         targetUrlString = decodeURIComponent(targetUrlString);
       }
-      
+    
       targetUrlString = normalizeUrl(targetUrlString);
       const targetUrl = new URL(targetUrlString);
-      
-      if (url.search && !targetUrlString。includes('?')) {
+    
+      if (url.search && !targetUrlString.includes('?')) {
         targetUrl.search = url.search;
       }
-      
-      context。log(`Proxying generic request to: ${targetUrl。toString()}`);
-      
+    
+      context.log(`Proxying generic request to: ${targetUrl.toString()}`);
+    
       const proxyRequest = new Request(targetUrl.toString(), {
         method: request.method,
-        headers: request.headers，
-        body: request。body，
-        redirect: 'manual'，
+        headers: request.headers,
+        body: request.body,
+        redirect: 'manual',
       });
-      
-      proxyRequest。headers。set("Host"， targetUrl。host);
-      
-      const clientIp = context.ip || request。headers.get('x-nf-client-connection-ip') || "";
-      proxyRequest。headers。set('X-Forwarded-For', clientIp);
+    
+      proxyRequest.headers.set("Host", targetUrl.host);
+    
+      const clientIp = context.ip || request.headers.get('x-nf-client-connection-ip') || "";
+      proxyRequest.headers.set('X-Forwarded-For', clientIp);
       proxyRequest.headers.set('X-Forwarded-Host', url.host);
       proxyRequest.headers.set('X-Forwarded-Proto', url.protocol.replace(':', ''));
-      
+    
       proxyRequest.headers.delete('accept-encoding');
-      
+    
       const referer = request.headers.get('referer');
       if (referer) {
         try {
           const refUrl = new URL(referer);
           const newReferer = `${targetUrl.protocol}//${targetUrl.host}${refUrl.pathname}${refUrl.search}`;
-          proxyRequest。headers.set('referer', newReferer);
+          proxyRequest.headers.set('referer', newReferer);
         } catch(e) {
           // 保持原样
         }
       } else {
         proxyRequest.headers.set('referer', `${targetUrl.protocol}//${targetUrl.host}/`);
       }
-      
+    
       const response = await fetch(proxyRequest);
-      
+    
       let newResponse = new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
         headers: response.headers
       });
-      
+    
       newResponse.headers.set('Access-Control-Allow-Origin', '*');
       newResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
       newResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Range');
-      
+    
       newResponse.headers.delete('Content-Security-Policy');
       newResponse.headers.delete('Content-Security-Policy-Report-Only');
       newResponse.headers.delete('X-Frame-Options');
       newResponse.headers.delete('X-Content-Type-Options');
-      
+    
       if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
         const location = response.headers.get('location')!;
         const redirectedUrl = new URL(location, targetUrl);
         const newLocation = `${url.origin}/proxy/${encodeURIComponent(redirectedUrl.toString())}`;
         newResponse.headers.set('Location', newLocation);
       }
-      
+    
       return newResponse;
     } catch (error) {
       context.log(`Error proxying generic URL: ${error}`);
@@ -294,14 +294,14 @@ export 默认 async (request: Request, context: Context) => {
       });
 
       proxyRequest.headers.set("Host", targetUrl.host);
-      
+    
       const clientIp = context.ip || request.headers.get('x-nf-client-connection-ip') || "";
       proxyRequest.headers.set('X-Forwarded-For', clientIp);
       proxyRequest.headers.set('X-Forwarded-Host', url.host);
       proxyRequest.headers.set('X-Forwarded-Proto', url.protocol.replace(':', ''));
-      
+    
       proxyRequest.headers.delete('accept-encoding');
-      
+    
       const referer = request.headers.get('referer');
       if (referer) {
         try {
@@ -314,93 +314,93 @@ export 默认 async (request: Request, context: Context) => {
       } else {
         proxyRequest.headers.set('referer', `${targetUrl.protocol}//${targetUrl.host}/`);
       }
-      
+    
       const response = await fetch(proxyRequest);
-      
+    
       const contentType = response.headers.get('content-type') || '';
-      
+    
       let newResponse: Response;
-      
+    
       const needsRewrite = HTML_CONTENT_TYPES.some(type => contentType.includes(type)) || 
                            CSS_CONTENT_TYPES.some(type => contentType.includes(type)) ||
                            JS_CONTENT_TYPES.some(type => contentType.includes(type));
-                           
+                         
       if (needsRewrite) {
         const clonedResponse = response.clone();
         let content = await clonedResponse.text();
-        
+      
         const targetDomain = targetUrl.host;
         const targetOrigin = targetUrl.origin;
         const targetPathBase = targetUrl.pathname.substring(0, targetUrl.pathname.lastIndexOf('/') + 1);
-        
+      
         if (HTML_CONTENT_TYPES.some(type => contentType.includes(type))) {
           content = content.replace(
             new RegExp(`(href|src|action|content)=["']https?://${targetDomain}(/[^"']*?)["']`, 'gi'),
             `$1="${url.origin}${matchedPrefix}$2"`
           );
-          
+        
           content = content.replace(
             new RegExp(`(href|src|action|content)=["']//${targetDomain}(/[^"']*?)["']`, 'gi'),
             `$1="${url.origin}${matchedPrefix}$2"`
           );
-          
+        
           content = content.replace(
             new RegExp(`(href|src|action|content)=["'](/[^"']*?)["']`, 'gi'),
             `$1="${url.origin}${matchedPrefix}$2"`
           );
-          
+        
           content = content.replace(
             new RegExp(`url\\(['"]?https?://${targetDomain}(/[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
-          
+        
           content = content.replace(
             new RegExp(`url\\(['"]?//${targetDomain}(/[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
-          
+        
           content = content.replace(
             new RegExp(`url\\(['"]?(/[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
-          
+        
           content = content.replace(
             new RegExp(`<base[^>]*href=["']https?://${targetDomain}(?:/[^"']*?)?["'][^>]*>`, 'gi'),
             `<base href="${url.origin}${matchedPrefix}/">`
           );
-          
+        
           content = content.replace(
             /(href|src|action|data-src|data-href)=["']((?!https?:\/\/|\/\/|\/)[^"']+)["']/gi,
             `$1="${url.origin}${matchedPrefix}/${targetPathBase}$2"`
           );
-          
+        
           content = content.replace(
             new RegExp(`"(url|path|endpoint|src|href)"\\s*:\\s*"https?://${targetDomain}(/[^"]*?)"`, 'gi'),
             `"$1":"${url.origin}${matchedPrefix}$2"`
           );
-          
+        
           content = content.replace(
             /"(url|path|endpoint|src|href)"\s*:\s*"(\/[^"]*?)"/gi,
             `"$1":"${url.origin}${matchedPrefix}$2"`
           );
-          
+        
           content = content.replace(
             new RegExp(`['"]https?://${targetDomain}(/[^"']*?)['"]`, 'gi'),
             `"${url.origin}${matchedPrefix}$1"`
           );
-          
+        
           content = content.replace(
             /([^a-zA-Z0-9_])(['"])(\/[^\/'"]+\/[^'"]*?)(['"])/g,
             `$1$2${url.origin}${matchedPrefix}$3$4`
           );
-          
+        
           content = content.replace(
             /srcset=["']([^"']+)["']/gi,
             (match, srcset) => {
               const newSrcset = srcset.split(',').map((src: string) => {
                 const [srcUrl, descriptor] = src.trim().split(/\s+/);
                 let newUrl = srcUrl;
-                
+              
                 if (srcUrl.startsWith('http://') || srcUrl.startsWith('https://')) {
                   if (srcUrl.includes(targetDomain)) {
                     newUrl = srcUrl.replace(
@@ -418,28 +418,28 @@ export 默认 async (request: Request, context: Context) => {
                 } else if (srcUrl.startsWith('/')) {
                   newUrl = `${url.origin}${matchedPrefix}${srcUrl}`;
                 }
-                
+              
                 return descriptor ? `${newUrl} ${descriptor}` : newUrl;
               }).join(', ');
-              
+            
               return `srcset="${newSrcset}"`;
             }
           );
-          
+        
           if (SPECIAL_REPLACEMENTS[targetDomain as keyof typeof SPECIAL_REPLACEMENTS]) {
             const replacements = SPECIAL_REPLACEMENTS[targetDomain as keyof typeof SPECIAL_REPLACEMENTS];
             for (const replacement of replacements) {
               content = content.replace(replacement.pattern, replacement.replacement as any);
             }
           }
-          
+        
           const prefixWithoutSlash = matchedPrefix.substring(1);
           const fixScript = `
           <script>
           (function() {
             const proxyPrefix = '${matchedPrefix}';
             const proxyPrefixName = '${prefixWithoutSlash}';
-            
+          
             if (window.location.pathname.startsWith(proxyPrefix)) {
               const originalFetch = window.fetch;
               window.fetch = function(resource, init) {
@@ -461,7 +461,7 @@ export 默认 async (request: Request, context: Context) => {
                     el.setAttribute('src', proxyPrefix + src);
                   }
                 });
-                
+              
                 document.querySelectorAll('link[rel="preload"][href^="/_next/"]').forEach(function(el) {
                   const href = el.getAttribute('href');
                   if (href && !href.startsWith(proxyPrefix)) {
@@ -507,7 +507,7 @@ export 默认 async (request: Request, context: Context) => {
                           }
                         });
                       });
-                      
+                    
                       const elementsWithStyle = node.querySelectorAll('[style*="url("]');
                       elementsWithStyle.forEach(function(el) {
                         let style = el.getAttribute('style');
@@ -522,7 +522,7 @@ export 默认 async (request: Request, context: Context) => {
                 }
               });
             });
-            
+          
             generalObserver.observe(document.body, {
               childList: true,
               subtree: true
@@ -530,7 +530,7 @@ export 默认 async (request: Request, context: Context) => {
           })();
           </script>
           `;
-          
+        
           const bodyCloseTagPos = content.lastIndexOf('</body>');
           if (bodyCloseTagPos !== -1) {
             content = content.substring(0, bodyCloseTagPos) + fixScript + content.substring(bodyCloseTagPos);
@@ -538,101 +538,101 @@ export 默认 async (request: Request, context: Context) => {
             content += fixScript;
           }
         }
-        
+      
         if (CSS_CONTENT_TYPES.some(type => contentType.includes(type))) {
           content = content.replace(
             new RegExp(`url\\(['"]?https?://${targetDomain}(/[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
-          
+        
           content = content.replace(
             new RegExp(`url\\(['"]?//${targetDomain}(/[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
-          
+        
           content = content.replace(
             new RegExp(`url\\(['"]?(/[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
-          
+        
           const cssPath = targetUrl.pathname;
           const cssDir = cssPath.substring(0, cssPath.lastIndexOf('/') + 1);
-          
+        
           // 🔧 这里修复了中文逗号问题
           content = content.replace(
             /url\(['"]?(?!https?:\/\/|\/\/|\/|data:|#)([^)'"]*)['"]?\)/gi,
             `url(${url.origin}${matchedPrefix}${cssDir}$1)`
           );
         }
-        
+      
         if (JS_CONTENT_TYPES.some(type => contentType.includes(type))) {
           content = content.replace(
             new RegExp(`(['"])https?://${targetDomain}(/[^'"]*?)(['"])`, 'gi'),
             `$1${url.origin}${matchedPrefix}$2$3`
           );
-          
+        
           content = content.replace(
             new RegExp(`(['"])//${targetDomain}(/[^'"]*?)(['"])`, 'gi'),
             `$1${url.origin}${matchedPrefix}$2$3`
           );
-          
+        
           content = content.replace(
-            /(['"])(\/[^'"]*?\.(?:js|css|png|jpg|jpeg|gif|svg|webp|ico|mp3|mp4|webm|ogg|woff|woff2|ttf|eot))(['"])/gi，
-            `$1${url。origin}${matchedPrefix}$2$3`
+            /(['"])(\/[^'"]*?\.(?:js|css|png|jpg|jpeg|gif|svg|webp|ico|mp3|mp4|webm|ogg|woff|woff2|ttf|eot))(['"])/gi,
+            `$1${url.origin}${matchedPrefix}$2$3`
           );
         }
-        
+      
         newResponse = new Response(content, {
-          status: response。status，
-          statusText: response。statusText，
-          headers: response。headers
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers
         });
       } else {
         newResponse = new Response(response.body, {
-          status: response。status，
-          statusText: response。statusText，
-          headers: response。headers
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers
         });
       }
-      
-      newResponse。headers。set('Access-Control-Allow-Origin'， '*');
-      newResponse。headers。set('Access-Control-Allow-Methods'， 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-      newResponse。headers。set('Access-Control-Allow-Headers'， 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Range');
-      
-      newResponse。headers。delete('Content-Security-Policy');
-      newResponse。headers。delete('Content-Security-Policy-Report-Only');
-      newResponse。headers。delete('X-Frame-Options');
-      newResponse。headers。delete('X-Content-Type-Options');
-      
-      if (HTML_CONTENT_TYPES。some(type => contentType.includes(输入))) {
-        newResponse。headers。set('Cache-Control'， 'no-store, no-cache, must-revalidate, proxy-revalidate');
-        newResponse。headers。set('Pragma'， 'no-cache');
-        newResponse。headers。set('Expires'， '0');
+    
+      newResponse.headers.set('Access-Control-Allow-Origin', '*');
+      newResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+      newResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Range');
+    
+      newResponse.headers.delete('Content-Security-Policy');
+      newResponse.headers.delete('Content-Security-Policy-Report-Only');
+      newResponse.headers.delete('X-Frame-Options');
+      newResponse.headers.delete('X-Content-Type-Options');
+    
+      if (HTML_CONTENT_TYPES.some(type => contentType.includes(type))) {
+        newResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        newResponse.headers.set('Pragma', 'no-cache');
+        newResponse.headers.set('Expires', '0');
       } else {
-        newResponse。headers。set('Cache-Control'， 'public, max-age=86400');
+        newResponse.headers.set('Cache-Control', 'public, max-age=86400');
       }
-      
-      if (response。status >= 300 && response。status < 400 && response。headers。has('location')) {
+    
+      if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
           const location = response.headers.get('location')!;
           const redirectedUrl = new URL(location, targetUrl);
 
-          if (redirectedUrl。origin === targetUrl。origin) {
+          if (redirectedUrl.origin === targetUrl.origin) {
               const newLocation = url.origin + matchedPrefix + redirectedUrl.pathname + redirectedUrl.search;
-              context。log(`Rewriting redirect from ${location} to ${newLocation}`);
-              newResponse.headers。set('Location', newLocation);
+              context.log(`Rewriting redirect from ${location} to ${newLocation}`);
+              newResponse.headers.set('Location', newLocation);
           } else {
-              context。log(`Proxying redirect to external location: ${location}`);
+              context.log(`Proxying redirect to external location: ${location}`);
           }
       }
-      
+    
       return newResponse;
 
     } catch (error) {
-      context。log("Error fetching target URL:"， error);
+      context.log("Error fetching target URL:", error);
       return new Response("代理请求失败", { 
         status: 502,
         headers: {
-          'Access-Control-Allow-Origin': '*'，
+          'Access-Control-Allow-Origin': '*',
           'Content-Type': 'text/plain;charset=UTF-8'
         }
       });
@@ -641,3 +641,295 @@ export 默认 async (request: Request, context: Context) => {
 
   return;
 };
+
+---
+
+这是player.html:
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频播放器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dplayer@1.26.0/dist/DPlayer.min.css">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: #000;
+            color: #fff;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            overflow: hidden;
+        }
+        .container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .video-container {
+            flex: 1;
+            position: relative;
+        }
+        .header {
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: normal;
+        }
+        .back-button {
+            color: #fff;
+            text-decoration: none;
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .back-button:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+        #dplayer {
+            height: 100%;
+            width: 100%;
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #fff;
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 15px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error-message {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #ff6b6b;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+        .retry-button {
+            background-color: #1E90FF;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .retry-button:hover {
+            background-color: #187bcd;
+        }
+        .source-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 id="video-title">加载中...</h1>
+            <a href="/tv" class="back-button">返回</a>
+        </div>
+        <div class="video-container">
+            <div id="dplayer"></div>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div>正在加载视频...</div>
+            </div>
+            <div class="error-message" id="error-message">
+                <h3>视频加载失败</h3>
+                <p>可能的原因:</p>
+                <ul>
+                    <li>视频源不可用</li>
+                    <li>网络连接问题</li>
+                    <li>播放器不支持此格式</li>
+                </ul>
+                <p>请选择操作:</p>
+                <button id="retry-direct" class="retry-button">直接访问</button>
+                <button id="retry-proxy" class="retry-button">使用代理</button>
+                <button onclick="window.history.back()" class="retry-button">返回上一页</button>
+            </div>
+            <div class="source-indicator" id="source-indicator"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/dplayer@1.26.0/dist/DPlayer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.0.7/dist/hls.min.js"></script>
+    <script>
+        // 解析 URL 参数
+        function getQueryParams() {
+            const params = {};
+            const query = window.location.search.substring(1);
+            const vars = query.split('&');
+            for (let i = 0; i < vars.length; i++) {
+                const pair = vars[i].split('=');
+                params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1] || '');
+            }
+            return params;
+        }
+
+        // 全局变量
+        let dp;
+        let params;
+        let originalVideoUrl;
+        let isUsingProxy = false;
+
+        // 创建代理URL
+        function createProxyUrl(url) {
+            return `/proxy/${encodeURIComponent(url)}`;
+        }
+
+        // 初始化播放器
+        function initPlayer(videoUrl, useProxy = false) {
+            if (dp) {
+                dp.destroy();
+            }
+
+            const container = document.getElementById('dplayer');
+            const sourceIndicator = document.getElementById('source-indicator');
+          
+            // 显示加载中
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('error-message').style.display = 'none';
+          
+            // 更新视频源指示器
+            isUsingProxy = useProxy;
+            sourceIndicator.textContent = useProxy ? '代理模式' : '直连模式';
+            sourceIndicator.style.backgroundColor = useProxy ? 'rgba(30, 144, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)';
+
+            try {
+                dp = new DPlayer({
+                    container: container,
+                    autoplay: true,
+                    theme: '#1E90FF',
+                    video: {
+                        url: videoUrl,
+                        type: videoUrl.includes('.m3u8') ? 'hls' : 'auto',
+                    },
+                    hotkey: true,
+                    preload: 'auto',
+                    customType: {
+                        hls: function(video, player) {
+                            const hls = new Hls({
+                                // HLS配置，添加更多兼容性
+                                debug: false,
+                                enableWorker: true,
+                                lowLatencyMode: true,
+                                backBufferLength: 90,
+                                xhrSetup: function(xhr, url) {
+                                    // 为HLS请求添加CORS头
+                                    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                                }
+                            });
+                            hls.loadSource(videoUrl);
+                            hls.attachMedia(video);
+                            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                                video.play();
+                            });
+                            hls.on(Hls.Events.ERROR, function(event, data) {
+                                if (data.fatal) {
+                                    console.error('HLS错误:', data);
+                                    showError('HLS播放错误: ' + data.type);
+                                }
+                            });
+                        }
+                    },
+                });
+
+                dp.on('loadstart', function() {
+                    hideLoading();
+                });
+
+                dp.on('loadeddata', function() {
+                    hideLoading();
+                });
+
+                dp.on('error', function() {
+                    console.error('播放器错误');
+                    showError('播放器加载视频失败');
+                });
+
+                // 超时检测
+                setTimeout(function() {
+                    if (dp.video.readyState === 0) {
+                        showError('视频加载超时');
+                    }
+                }, 15000);
+            } catch (error) {
+                console.error('播放器初始化失败:', error);
+                showError('播放器初始化失败: ' + error.message);
+            }
+        }
+
+        // DOM加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            params = getQueryParams();
+            originalVideoUrl = params.url;
+            const videoTitle = params.title || '未知视频';
+            const sourceText = params.source ? `(来源: ${params.source})` : '';
+          
+            document.getElementById('video-title').textContent = `${videoTitle} ${sourceText}`;
+            document.title = videoTitle;
+
+            if (!originalVideoUrl) {
+                showError('缺少视频URL参数');
+                return;
+            }
+
+            // 首先尝试使用代理
+            initPlayer(createProxyUrl(originalVideoUrl), true);
+
+            // 设置重试按钮事件
+            document.getElementById('retry-direct').addEventListener('click', function() {
+                initPlayer(originalVideoUrl, false);
+            });
+
+            document.getElementById('retry-proxy').addEventListener('click', function() {
+                initPlayer(createProxyUrl(originalVideoUrl), true);
+            });
+        });
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function showError(message) {
+            hideLoading();
+            console.error(message);
+            const errorElement = document.getElementById('error-message');
+            errorElement.style.display = 'block';
+        }
+    </script>
+</body>
+</html> 
