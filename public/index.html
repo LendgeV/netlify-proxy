@@ -3,123 +3,893 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Netlify 反向代理服务</title>
+    <title>V Proxy - 代理服务面板</title>
     <style>
+        /* ===== CSS 变量体系 ===== */
+        :root {
+            /* 配色系统 - 深色主题 */
+            --bg-primary: #0a0a0a;
+            --bg-surface: #111111;
+            --bg-elevated: #1a1a1a;
+            --bg-hover: #222222;
+            
+            /* 边框层级 */
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --border-default: rgba(255, 255, 255, 0.1);
+            --border-strong: rgba(255, 255, 255, 0.15);
+            
+            /* 文字层级 */
+            --text-primary: rgba(255, 255, 255, 0.92);
+            --text-secondary: rgba(255, 255, 255, 0.65);
+            --text-tertiary: rgba(255, 255, 255, 0.45);
+            --text-disabled: rgba(255, 255, 255, 0.25);
+            
+            /* 品牌色 - 降饱和蓝紫 */
+            --accent-primary: #6366f1;
+            --accent-hover: #7c7ff2;
+            --accent-subtle: rgba(99, 102, 241, 0.15);
+            --accent-border: rgba(99, 102, 241, 0.3);
+            
+            /* 状态色 */
+            --success: #10b981;
+            --success-subtle: rgba(16, 185, 129, 0.15);
+            --warning: #f59e0b;
+            
+            /* 间距体系 */
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --spacing-2xl: 48px;
+            --spacing-3xl: 64px;
+            
+            /* 圆角体系 */
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --radius-xl: 20px;
+            
+            /* 阴影层次 */
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.12);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.18);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.24);
+            --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+            
+            /* 字体体系 */
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --font-mono: "SF Mono", "Fira Code", "Consolas", "Liberation Mono", monospace;
+            
+            /* 字号体系 */
+            --text-xs: 12px;
+            --text-sm: 14px;
+            --text-base: 16px;
+            --text-lg: 18px;
+            --text-xl: 24px;
+            --text-2xl: 32px;
+            --text-3xl: 48px;
+        }
+        
+        /* ===== 全局重置 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        /* ===== 基础样式 ===== */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
             line-height: 1.6;
-            color: #333;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
-        h1 {
-            color: #0070f3;
-            margin-bottom: 0.5em;
+        
+        /* ===== 网格装饰背景 ===== */
+        .bg-grid {
+            position: fixed;
+            inset: 0;
+            background-image: 
+                linear-gradient(var(--border-subtle) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
+            background-size: 64px 64px;
+            mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 20%, transparent 80%);
+            -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 20%, transparent 80%);
+            pointer-events: none;
+            z-index: 0;
         }
+        
+        /* ===== 顶部光带装饰 ===== */
+        .top-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                var(--accent-primary) 30%, 
+                var(--accent-primary) 70%, 
+                transparent 100%
+            );
+            box-shadow: 0 0 40px var(--accent-primary);
+            z-index: 100;
+        }
+        
+        /* ===== 容器布局 ===== */
         .container {
-            background-color: #f9f9f9;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-top: 20px;
+            position: relative;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: var(--spacing-2xl) var(--spacing-lg);
+            z-index: 1;
         }
-        code {
-            background: #f0f0f0;
-            padding: 0.2em 0.4em;
-            border-radius: 3px;
-            font-size: 85%;
-            font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+        
+        /* ===== 头部区域 ===== */
+        header {
+            text-align: center;
+            margin-bottom: var(--spacing-3xl);
+            padding-top: var(--spacing-3xl);
         }
-        .service-list {
+        
+        .logo {
+            display: inline-block;
+            font-size: var(--text-3xl);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: var(--spacing-md);
+            animation: fadeInDown 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .subtitle {
+            font-size: var(--text-lg);
+            color: var(--text-secondary);
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            animation: fadeInDown 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s backwards;
+        }
+        
+        /* ===== 搜索栏 ===== */
+        .search-wrapper {
+            position: relative;
+            max-width: 600px;
+            margin: var(--spacing-2xl) auto var(--spacing-3xl);
+            animation: fadeInDown 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s backwards;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: var(--spacing-md) var(--spacing-lg);
+            padding-left: 48px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            color: var(--text-primary);
+            font-size: var(--text-base);
+            font-family: var(--font-sans);
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .search-input::placeholder {
+            color: var(--text-tertiary);
+        }
+        
+        .search-input:focus {
+            background: var(--bg-elevated);
+            border-color: var(--accent-border);
+            box-shadow: 0 0 0 3px var(--accent-subtle), var(--shadow-md);
+            transform: translateY(-1px);
+        }
+        
+        .search-icon {
+            position: absolute;
+            left: var(--spacing-md);
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            pointer-events: none;
+            transition: color 0.3s ease;
+        }
+        
+        .search-input:focus + .search-icon {
+            color: var(--accent-primary);
+        }
+        
+        /* ===== 标签筛选器 ===== */
+        .filter-tabs {
+            display: flex;
+            gap: var(--spacing-sm);
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: var(--spacing-2xl);
+            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.3s backwards;
+        }
+        
+        .filter-tab {
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-size: var(--text-sm);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            user-select: none;
+        }
+        
+        .filter-tab:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-default);
+            color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+        
+        .filter-tab.active {
+            background: var(--accent-subtle);
+            border-color: var(--accent-border);
+            color: var(--accent-primary);
+        }
+        
+        /* ===== 卡片网格 ===== */
+        .cards-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 10px;
-            margin-top: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-3xl);
         }
-        .service-item {
-            background: #fff;
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #eaeaea;
-            transition: transform 0.2s, box-shadow 0.2s;
+        
+        /* ===== 服务卡片 ===== */
+        .service-card {
+            position: relative;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            cursor: pointer;
+            overflow: hidden;
+            animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
         }
-        .service-item:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+        
+        /* 错开动画延迟 */
+        .service-card:nth-child(1) { animation-delay: 0.1s; }
+        .service-card:nth-child(2) { animation-delay: 0.15s; }
+        .service-card:nth-child(3) { animation-delay: 0.2s; }
+        .service-card:nth-child(4) { animation-delay: 0.25s; }
+        .service-card:nth-child(5) { animation-delay: 0.3s; }
+        .service-card:nth-child(6) { animation-delay: 0.35s; }
+        .service-card:nth-child(n+7) { animation-delay: 0.4s; }
+        
+        /* 卡片装饰 - 顶部细线 */
+        .service-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+            opacity: 0;
+            transition: opacity 0.35s ease;
         }
-        .service-item a {
-            color: #0070f3;
+        
+        .service-card:hover {
+            background: var(--bg-elevated);
+            border-color: var(--border-strong);
+            transform: translateY(-4px) scale(1.01);
+            box-shadow: var(--shadow-lg), 0 0 0 1px var(--border-strong);
+        }
+        
+        .service-card:hover::before {
+            opacity: 1;
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--accent-subtle);
+            border: 1px solid var(--accent-border);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .service-card:hover .card-icon {
+            background: var(--accent-primary);
+            transform: rotate(5deg) scale(1.1);
+            box-shadow: var(--shadow-glow);
+        }
+        
+        .card-title {
+            font-size: var(--text-lg);
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+        
+        .card-path {
+            font-family: var(--font-mono);
+            font-size: var(--text-sm);
+            color: var(--text-tertiary);
+            background: var(--bg-primary);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--spacing-sm);
+            border: 1px solid var(--border-subtle);
+            display: inline-block;
+            transition: all 0.25s ease;
+        }
+        
+        .service-card:hover .card-path {
+            color: var(--accent-primary);
+            border-color: var(--accent-border);
+        }
+        
+        .card-target {
+            font-size: var(--text-xs);
+            color: var(--text-disabled);
+            font-family: var(--font-mono);
+            word-break: break-all;
+            line-height: 1.4;
+        }
+        
+        .card-tag {
+            display: inline-block;
+            margin-top: var(--spacing-sm);
+            padding: 2px var(--spacing-sm);
+            background: var(--success-subtle);
+            color: var(--success);
+            font-size: var(--text-xs);
+            font-weight: 500;
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        
+        .card-tag.api {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+            border-color: rgba(245, 158, 11, 0.2);
+        }
+        
+        /* ===== 复制提示 ===== */
+        .copy-toast {
+            position: fixed;
+            bottom: var(--spacing-xl);
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-strong);
+            box-shadow: var(--shadow-lg);
+            font-size: var(--text-sm);
+            font-weight: 500;
+            opacity: 0;
+            z-index: 1000;
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .copy-toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        
+        /* ===== 空状态 ===== */
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-3xl) var(--spacing-lg);
+            color: var(--text-tertiary);
+            font-size: var(--text-base);
+        }
+        
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: var(--spacing-lg);
+            opacity: 0.5;
+        }
+        
+        /* ===== 页脚（极简） ===== */
+        footer {
+            text-align: center;
+            padding: var(--spacing-2xl) var(--spacing-lg);
+            color: var(--text-disabled);
+            font-size: var(--text-sm);
+            border-top: 1px solid var(--border-subtle);
+        }
+        
+        footer a {
+            color: var(--text-secondary);
             text-decoration: none;
-            display: block;
+            transition: color 0.25s ease;
         }
-        .service-item a:hover {
-            text-decoration: underline;
+        
+        footer a:hover {
+            color: var(--accent-primary);
+        }
+        
+        /* ===== 关键帧动画 ===== */
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* ===== 响应式断点 ===== */
+        @media (max-width: 768px) {
+            :root {
+                --text-3xl: 36px;
+                --text-2xl: 28px;
+                --text-xl: 20px;
+            }
+            
+            .container {
+                padding: var(--spacing-xl) var(--spacing-md);
+            }
+            
+            header {
+                padding-top: var(--spacing-2xl);
+                margin-bottom: var(--spacing-xl);
+            }
+            
+            .cards-grid {
+                grid-template-columns: 1fr;
+                gap: var(--spacing-md);
+            }
+            
+            .search-wrapper {
+                margin: var(--spacing-xl) auto var(--spacing-2xl);
+            }
+            
+            .filter-tabs {
+                margin-bottom: var(--spacing-xl);
+            }
+        }
+        
+        /* ===== 滚动条样式 ===== */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-elevated);
+            border-radius: 5px;
+            border: 2px solid var(--bg-primary);
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--bg-hover);
         }
     </style>
 </head>
 <body>
-    <h1>Netlify 反向代理服务</h1>
+    <!-- 网格装饰背景 -->
+    <div class="bg-grid"></div>
+    
+    <!-- 顶部光带 -->
+    <div class="top-glow"></div>
     
     <div class="container">
-        <h2>可用的代理服务</h2>
-        <p>以下是当前配置的代理服务，点击链接访问对应服务：</p>
+        <!-- 头部 -->
+        <header>
+            <h1 class="logo">V Proxy</h1>
+            <p class="subtitle">高性能边缘代理服务 · 即时访问全球资源</p>
+        </header>
         
-        <div class="service-list">
-            <div class="service-item">
-                <a href="/hexo/" target="_blank">Hexo 博客</a>
-            </div>
-            <div class="service-item">
-                <a href="/hexo2/" target="_blank">Hexo 博客 2</a>
-            </div>
-            <div class="service-item">
-                <a href="/halo/" target="_blank">Halo 博客</a>
-            </div>
-            <div class="service-item">
-                <a href="/kuma/" target="_blank">Kuma 面板</a>
-            </div>
-            <div class="service-item">
-                <a href="/hf/" target="_blank">HuggingFace</a>
-            </div>
-            <div class="service-item">
-                <a href="/tv/" target="_blank">TV 服务</a>
-            </div>
-            <div class="service-item">
-                <a href="/news/" target="_blank">新闻聚合</a>
-            </div>
+        <!-- 搜索栏 -->
+        <div class="search-wrapper">
+            <input 
+                type="text" 
+                class="search-input" 
+                id="searchInput" 
+                placeholder="搜索服务名称或路径..."
+                autocomplete="off"
+            >
+            <svg class="search-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M12.5 12.5L16.5 16.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+        </div>
+        
+        <!-- 标签筛选 -->
+        <div class="filter-tabs">
+            <div class="filter-tab active" data-filter="all">全部</div>
+            <div class="filter-tab" data-filter="api">API</div>
+            <div class="filter-tab" data-filter="website">网站</div>
+        </div>
+        
+        <!-- 服务卡片网格 -->
+        <div class="cards-grid" id="cardsGrid"></div>
+        
+        <!-- 空状态 -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-icon">🔍</div>
+            <div>未找到匹配的服务</div>
         </div>
     </div>
-
-    <div class="container">
-        <h2>API 代理服务</h2>
-        <p>以下 API 代理路径可通过程序访问：</p>
-        <ul>
-            <li><code>/discord/*</code> - Discord API</li>
-            <li><code>/telegram/*</code> - Telegram API</li>
-            <li><code>/openai/*</code> - OpenAI API</li>
-            <li><code>/claude/*</code> - Anthropic/Claude API</li>
-            <li><code>/gemini/*</code> - Google Gemini API</li>
-            <li><code>/meta/*</code> - Meta AI API</li>
-            <li><code>/groq/*</code> - Groq API</li>
-            <li><code>/xai/*</code> - X.AI API</li>
-            <li><code>/cohere/*</code> - Cohere API</li>
-            <li><code>/huggingface/*</code> - HuggingFace Inference API</li>
-            <li><code>/together/*</code> - Together.xyz API</li>
-            <li><code>/novita/*</code> - Novita.ai API</li>
-            <li><code>/portkey/*</code> - Portkey.ai API</li>
-            <li><code>/fireworks/*</code> - Fireworks.ai API</li>
-            <li><code>/openrouter/*</code> - OpenRouter.ai API</li>
-        </ul>
+    
+    <!-- 复制提示 -->
+    <div class="copy-toast" id="copyToast">
+        ✓ 已复制到剪贴板
     </div>
-
-    <div class="container">
-        <h2>使用说明</h2>
-        <p>所有请求将通过 Netlify Edge Functions 代理到目标服务器，同时保留原始请求的方法、头部和主体。</p>
-        <p>例如，访问 <code>/hexo/post/hello-world</code> 将会代理到 <code>https://hexo-gally.vercel.app/post/hello-world</code>。</p>
-    </div>
-
-    <footer style="margin-top: 40px; text-align: center; color: #666; font-size: 14px;">
-        <p>由 Netlify Edge Functions 提供支持。</p>
+    
+    <!-- 页脚 -->
+    <footer>
+        <p>由 <a href="https://netlify.com" target="_blank" rel="noopener">Netlify Edge Functions</a> 提供支持</p>
     </footer>
+
+    <script>
+        // ===== 服务配置数据 =====
+        const SERVICES = [
+            // API 服务
+            { name: 'Groq', path: '/groq', target: 'api.groq.com/openai', type: 'api', icon: '🚀' },
+            { name: 'Groq G4F', path: '/groq_g4f', target: 'g4f.dev/api/groq', type: 'api', icon: '⚡' },
+            { name: 'OpenRouter', path: '/openrouter', target: 'openrouter.ai/api', type: 'api', icon: '🔀' },
+            { name: 'Cerebras', path: '/cerebras', target: 'api.cerebras.ai', type: 'api', icon: '🧠' },
+            { name: 'OpenAI', path: '/openai', target: 'api.openai.com', type: 'api', icon: '🤖' },
+            { name: 'Claude', path: '/claude', target: 'api.anthropic.com', type: 'api', icon: '🎭' },
+            { name: 'Gemini', path: '/gemini', target: 'generativelanguage.googleapis.com', type: 'api', icon: '💎' },
+            { name: 'Gemini NoThink', path: '/gemininothink', target: 'generativelanguage.googleapis.com', type: 'api', icon: '💠' },
+            { name: 'Gemini G4F', path: '/gemini_g4f', target: 'g4f.dev/api/gemini', type: 'api', icon: '🔷' },
+            { name: 'xAI', path: '/xai', target: 'api.x.ai', type: 'api', icon: '❌' },
+            { name: 'xAI Linux', path: '/xai_linux', target: 'img001.eu.org', type: 'api', icon: '🐧' },
+            { name: 'Vercel AI', path: '/vercel', target: 'ai-gateway.vercel.sh', type: 'api', icon: '▲' },
+            { name: 'Anannas', path: '/anannas', target: 'api.anannas.ai', type: 'api', icon: '🍍' },
+            { name: 'Bonsai', path: '/bonsai', target: 'go.trybons.ai', type: 'api', icon: '🌳' },
+            { name: 'Oxen', path: '/oxen', target: 'hub.oxen.ai', type: 'api', icon: '🐂' },
+            { name: 'Zenmux', path: '/zenmux', target: 'zenmux.ai/api', type: 'api', icon: '🧘' },
+            { name: 'DeepInfra', path: '/deepinfra', target: 'api.deepinfra.com', type: 'api', icon: '🏗️' },
+            { name: 'NVIDIA', path: '/nvidia', target: 'integrate.api.nvidia.com', type: 'api', icon: '🎮' },
+            { name: 'NVIDIA G4F', path: '/nvidia_g4f', target: 'g4f.dev/api/nvidia', type: 'api', icon: '🟢' },
+            { name: 'Verse8', path: '/verse8', target: 'agent8.verse8.io', type: 'api', icon: '8️⃣' },
+            { name: 'MegaLLM', path: '/megallm', target: 'ai.megallm.io', type: 'api', icon: '🔥' },
+            { name: 'V-API', path: '/vapi', target: 'v-api.zeabur.app', type: 'api', icon: '🆅' },
+            { name: 'Free API', path: '/free', target: 'v-api.zeabur.app', type: 'api', icon: '🆓' },
+            { name: 'Claude Docs', path: '/claude_docs', target: 'api.inkeep.com', type: 'api', icon: '📚' },
+            { name: 'Claude Docs Challenge', path: '/claude_docs_challenge', target: 'api.inkeep.com', type: 'api', icon: '🎯' },
+            { name: 'Puter', path: '/puter', target: 'api.puter.com', type: 'api', icon: '💻' },
+            { name: 'GPT4Free', path: '/gpt4free', target: 'gpt4free.pro', type: 'api', icon: '🎁' },
+            { name: 'Pollinations', path: '/pollinations', target: 'text.pollinations.ai/openai', type: 'api', icon: '🌺' },
+            { name: 'Storytell', path: '/storytell', target: 'api.storytell.ai', type: 'api', icon: '📖' },
+            { name: 'Metir', path: '/metir', target: 'metir-chat.fly.dev', type: 'api', icon: '☄️' },
+            { name: 'B4U', path: '/b4u', target: 'b4u.qzz.io', type: 'api', icon: '🔵' },
+            { name: 'GLM Linux', path: '/glm_linux', target: 'newapi.ixio.cc', type: 'api', icon: '🐧' },
+            { name: 'Weights', path: '/weights', target: 'api.inference.wandb.ai', type: 'api', icon: '⚖️' },
+            { name: 'ElectronHub', path: '/electronhub', target: 'api.electronhub.ai', type: 'api', icon: '⚛️' },
+            { name: 'MNN', path: '/mnn', target: 'api.mnnai.ru', type: 'api', icon: '🇷🇺' },
+            { name: 'Navy', path: '/navy', target: 'api.navy', type: 'api', icon: '⚓' },
+            { name: 'Void', path: '/void', target: 'api.voidai.app', type: 'api', icon: '🌌' },
+            
+            // 网站服务
+            { name: 'Hanime', path: '/hanime', target: 'hanime1.me', type: 'website', icon: '🎬' },
+            { name: 'X', path: '/x', target: 'hx.com', type: 'website', icon: '🐦' },
+            { name: 'GitHub', path: '/github', target: 'github.com', type: 'website', icon: '🐱' },
+            { name: 'Linux.do', path: '/linux.do', target: 'linux.do', type: 'website', icon: '🐧' },
+            { name: 'Gmail', path: '/mail.google', target: 'mail.google.com', type: 'website', icon: '📧' },
+            { name: 'Pixiv', path: '/pixiv', target: 'pixiv.net', type: 'website', icon: '🎨' },
+            { name: 'YouTube', path: '/youtube', target: 'youtube.com', type: 'website', icon: '📺' }
+        ];
+        
+        const BASE_URL = 'https://v-proxy.netlify.app';
+        
+        // ===== DOM 元素 =====
+        const cardsGrid = document.getElementById('cardsGrid');
+        const emptyState = document.getElementById('emptyState');
+        const searchInput = document.getElementById('searchInput');
+        const filterTabs = document.querySelectorAll('.filter-tab');
+        const copyToast = document.getElementById('copyToast');
+        
+        // ===== 当前筛选状态 =====
+        let currentFilter = 'all';
+        let currentSearch = '';
+        
+        // ===== 渲染服务卡片 =====
+        function renderCards() {
+            const filteredServices = SERVICES.filter(service => {
+                // 类型筛选
+                const matchesFilter = currentFilter === 'all' || service.type === currentFilter;
+                
+                // 搜索筛选
+                const searchTerm = currentSearch.toLowerCase();
+                const matchesSearch = !searchTerm || 
+                    service.name.toLowerCase().includes(searchTerm) ||
+                    service.path.toLowerCase().includes(searchTerm) ||
+                    service.target.toLowerCase().includes(searchTerm);
+                
+                return matchesFilter && matchesSearch;
+            });
+            
+            // 清空网格
+            cardsGrid.innerHTML = '';
+            
+            // 显示空状态或卡片
+            if (filteredServices.length === 0) {
+                emptyState.style.display = 'block';
+                cardsGrid.style.display = 'none';
+            } else {
+                emptyState.style.display = 'none';
+                cardsGrid.style.display = 'grid';
+                
+                // 渲染卡片
+                filteredServices.forEach((service, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'service-card';
+                    card.style.animationDelay = `${0.1 + index * 0.05}s`;
+                    
+                    const fullUrl = BASE_URL + service.path;
+                    const tagLabel = service.type === 'api' ? 'API' : '网站';
+                    const tagClass = service.type === 'api' ? 'api' : '';
+                    
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <div class="card-icon">${service.icon}</div>
+                            <div class="card-title">${service.name}</div>
+                        </div>
+                        <div class="card-path">${service.path}</div>
+                        <div class="card-target">→ ${service.target}</div>
+                        <span class="card-tag ${tagClass}">${tagLabel}</span>
+                    `;
+                    
+                    // 点击复制完整 URL
+                    card.addEventListener('click', () => {
+                        copyToClipboard(fullUrl);
+                    });
+                    
+                    cardsGrid.appendChild(card);
+                });
+            }
+        }
+        
+        // ===== 复制到剪贴板 =====
+        function copyToClipboard(text) {
+            // 使用现代 Clipboard API
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showCopyToast();
+                }).catch(err => {
+                    // 降级方案
+                    fallbackCopy(text);
+                });
+            } else {
+                // 降级方案
+                fallbackCopy(text);
+            }
+        }
+        
+        // ===== 降级复制方案 =====
+        function fallbackCopy(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            textArea.style.top = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                showCopyToast();
+            } catch (err) {
+                console.error('复制失败:', err);
+            }
+            
+            document.body.removeChild(textArea);
+        }
+        
+        // ===== 显示复制提示 =====
+        function showCopyToast() {
+            copyToast.classList.add('show');
+            
+            // 2 秒后隐藏
+            setTimeout(() => {
+                copyToast.classList.remove('show');
+            }, 2000);
+        }
+        
+        // ===== 搜索功能 =====
+        searchInput.addEventListener('input', (e) => {
+            currentSearch = e.target.value.trim();
+            renderCards();
+        });
+        
+        // ===== 标签筛选 =====
+        filterTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // 移除所有 active 状态
+                filterTabs.forEach(t => t.classList.remove('active'));
+                
+                // 添加当前 active 状态
+                tab.classList.add('active');
+                
+                // 更新筛选器
+                currentFilter = tab.dataset.filter;
+                
+                // 重新渲染
+                renderCards();
+            });
+        });
+        
+        // ===== 键盘快捷键：Escape 清空搜索 =====
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && searchInput.value) {
+                searchInput.value = '';
+                currentSearch = '';
+                renderCards();
+                searchInput.blur();
+            }
+            
+            // Cmd/Ctrl + K 聚焦搜索框
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                searchInput.focus();
+            }
+        });
+        
+        // ===== 初始化渲染 =====
+        renderCards();
+        
+        // ===== 页面加载动画优化 =====
+        window.addEventListener('load', () => {
+            document.body.style.opacity = '1';
+        });
+        
+        // ===== 性能优化：防抖搜索 =====
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                currentSearch = e.target.value.trim();
+                renderCards();
+            }, 200);
+        });
+        
+        // ===== 平滑滚动到顶部（点击 Logo） =====
+        document.querySelector('.logo').addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+        
+        // ===== 视差效果：鼠标移动光晕追踪（可选） =====
+        let mouseX = 0;
+        let mouseY = 0;
+        let currentX = 0;
+        let currentY = 0;
+        
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+        
+        // 创建光晕元素
+        const cursorGlow = document.createElement('div');
+        cursorGlow.style.cssText = `
+            position: fixed;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+            transition: opacity 0.3s ease;
+            opacity: 0;
+        `;
+        document.body.appendChild(cursorGlow);
+        
+        // 延迟追踪动画
+        function animateGlow() {
+            const dx = mouseX - currentX;
+            const dy = mouseY - currentY;
+            
+            currentX += dx * 0.1;
+            currentY += dy * 0.1;
+            
+            cursorGlow.style.left = (currentX - 200) + 'px';
+            cursorGlow.style.top = (currentY - 200) + 'px';
+            
+            requestAnimationFrame(animateGlow);
+        }
+        
+        animateGlow();
+        
+        // 鼠标进入页面显示光晕
+        document。addEventListener('mouseenter'， () => {
+            cursorGlow。style。opacity = '1';
+        });
+        
+        document。addEventListener('mouseleave'， () => {
+            cursorGlow。style。opacity = '0';
+        });
+        
+        // ===== 统计信息实时更新（数字滚动动画） =====
+        function animateCount(element， target, duration = 1000) {
+            const start = 0;
+            const increment = target / (duration / 16);
+            let current = start;
+            
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {
+                    element。textContent = target;
+                    clearInterval(timer);
+                } else {
+                    element。textContent = Math。floor(current);
+                }
+            }， 16);
+        }
+        
+        // ===== 响应式：移动端触摸优化 =====
+        if ('ontouchstart' 在 window) {
+            // 移动端禁用光晕效果
+            cursorGlow。style。display = 'none';
+            
+            // 优化卡片点击区域
+            document。querySelectorAll('.service-card')。forEach(card => {
+                card。style。minHeight = '44px'; // iOS 推荐最小触摸区域
+            });
+        }
+        
+        // ===== 页面可见性 API：标签页切换优化 =====
+        document。addEventListener('visibilitychange'， () => {
+            if (document。hidden) {
+                // 页面隐藏时暂停动画
+                cursorGlow。style。display = 'none';
+            } else {
+                // 页面显示时恢复动画
+                if (!('ontouchstart' in window)) {
+                    cursorGlow.style.display = 'block';
+                }
+            }
+        });
+        
+        // ===== 控制台彩蛋 =====
+        console。log('%c🚀 V Proxy'， 'font-size: 24px; font-weight: bold; color: #6366f1;');
+        console。log('%c高性能边缘代理服务'， 'font-size: 14px; color: #888;');
+        console。log('%c由 Netlify Edge Functions 驱动'， 'font-size: 12px; color: #666; font-style: italic;');
+        console.log('%c\n💡 提示：点击任意卡片即可复制完整 URL', 'font-size: 12px; color: #10b981;');
+        console.log('%c⌨️  快捷键：Cmd/Ctrl + K 聚焦搜索', 'font-size: 12px; color: #f59e0b;');
+    </script>
 </body>
-</html> 
+</html>
