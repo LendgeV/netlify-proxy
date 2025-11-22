@@ -44,6 +44,7 @@ const PROXY_CONFIG = {
 
   // ===== 网站 =====
   hanime: "hanime1.me",
+  tv: "tv.gally.ddns-ip.net", // 🔥 添加 tv 代理
 } as const;
 
 // 需要修复路径的内容类型
@@ -62,6 +63,15 @@ const JS_CONTENT_TYPES = [
   'application/javascript',
   'text/javascript',
   'application/x-javascript'
+];
+
+// 🔥 HLS M3U8 支持
+const M3U8_CONTENT_TYPES = [
+  'application/vnd.apple.mpegurl',
+  'application/x-mpegurl',
+  'audio/mpegurl',
+  'application/mpegurl',
+  'video/mpegurl'
 ];
 
 // 特定网站的替换规则
@@ -153,6 +163,85 @@ function normalizePathPrefix(prefix: string): string {
   return prefix.startsWith('/') ? prefix : '/' + prefix;
 }
 
+/**
+ * 🔥 重写 M3U8 文件内容
+ */
+function rewriteM3U8(content: string, targetUrl: URL, proxyOrigin: string, matchedPrefix: string, context: Context): string {
+  const targetOrigin = targetUrl.origin;
+  const targetPathBase = targetUrl.pathname.substring(0, targetUrl.pathname.lastIndexOf('/') + 1);
+  
+  return content.split('\n').map(line => {
+    const trimmedLine = line.trim();
+    
+    // 跳过注释和空行
+    if (trimmedLine === '' || trimmedLine.startsWith('#')) {
+      return line;
+    }
+    
+    // 处理 URI 参数（如 #EXT-X-KEY:METHOD=AES-128,URI="...")
+    if (trimmedLine.includes('URI=')) {
+      return line.replace(/URI="([^"]+)"/g, (match, uri) => {
+        let newUri: string;
+        
+        try {
+          if (uri.startsWith('http://') || uri.startsWith('https://')) {
+            // 绝对 URL
+            newUri = `${proxyOrigin}/proxy/${encodeURIComponent(uri)}`;
+          } else if (uri.startsWith('//')) {
+            // 协议相对 URL
+            newUri = `${proxyOrigin}/proxy/${encodeURIComponent('https:' + uri)}`;
+          } else if (uri.startsWith('/')) {
+            // 根相对路径
+            newUri = `${proxyOrigin}${matchedPrefix}${uri}`;
+          } else {
+            // 相对路径
+            const baseUrl = targetOrigin + targetPathBase;
+            const fullUri = new URL(uri, baseUrl).toString();
+            newUri = `${proxyOrigin}/proxy/${encodeURIComponent(fullUri)}`;
+          }
+          
+          context.log(`[M3U8] Rewriting URI: ${uri} -> ${newUri}`);
+          return `URI="${newUri}"`;
+        } catch (e) {
+          context.log(`[M3U8] URI rewrite error: ${uri}`, e);
+          return match;
+        }
+      });
+    }
+    
+    // 处理普通 URL 行（.ts 分片、子 m3u8 等）
+    try {
+      if (trimmedLine.startsWith('http://') || trimmedLine.startsWith('https://')) {
+        // 绝对 URL
+        const newUrl = `${proxyOrigin}/proxy/${encodeURIComponent(trimmedLine)}`;
+        context.log(`[M3U8] Absolute URL: ${trimmedLine} -> ${newUrl}`);
+        return newUrl;
+      } else if (trimmedLine.startsWith('//')) {
+        // 协议相对 URL
+        const fullUrl = 'https:' + trimmedLine;
+        const newUrl = `${proxyOrigin}/proxy/${encodeURIComponent(fullUrl)}`;
+        context.log(`[M3U8] Protocol-relative: ${trimmedLine} -> ${newUrl}`);
+        return newUrl;
+      } else if (trimmedLine.startsWith('/')) {
+        // 根相对路径
+        const newUrl = `${proxyOrigin}${matchedPrefix}${trimmedLine}`;
+        context.log(`[M3U8] Root-relative: ${trimmedLine} -> ${newUrl}`);
+        return newUrl;
+      } else {
+        // 相对路径
+        const baseUrl = targetOrigin + targetPathBase;
+        const fullUrl = new URL(trimmedLine, baseUrl).toString();
+        const newUrl = `${proxyOrigin}/proxy/${encodeURIComponent(fullUrl)}`;
+        context.log(`[M3U8] Relative: ${trimmedLine} -> ${newUrl}`);
+        return newUrl;
+      }
+    } catch (e) {
+      context.log(`[M3U8] URL rewrite error: ${trimmedLine}`, e);
+      return line;
+    }
+  }).join('\n');
+}
+
 export default async (request: Request, context: Context) => {
   // 处理 CORS 预检请求
   if (request.method === "OPTIONS") {
@@ -175,36 +264,36 @@ export default async (request: Request, context: Context) => {
   if (path.startsWith('/proxy/')) {
     try {
       let targetUrlString = path.substring('/proxy/'.length);
-    
+      
       if (targetUrlString.startsWith('http%3A%2F%2F') || targetUrlString.startsWith('https%3A%2F%2F')) {
         targetUrlString = decodeURIComponent(targetUrlString);
       }
-    
+      
       targetUrlString = normalizeUrl(targetUrlString);
       const targetUrl = new URL(targetUrlString);
-    
+      
       if (url.search && !targetUrlString.includes('?')) {
         targetUrl.search = url.search;
       }
-    
+      
       context.log(`Proxying generic request to: ${targetUrl.toString()}`);
-    
+      
       const proxyRequest = new Request(targetUrl.toString(), {
         method: request.method,
         headers: request.headers,
         body: request.body,
         redirect: 'manual',
       });
-    
+      
       proxyRequest.headers.set("Host", targetUrl.host);
-    
+      
       const clientIp = context.ip || request.headers.get('x-nf-client-connection-ip') || "";
       proxyRequest.headers.set('X-Forwarded-For', clientIp);
       proxyRequest.headers.set('X-Forwarded-Host', url.host);
       proxyRequest.headers.set('X-Forwarded-Proto', url.protocol.replace(':', ''));
-    
+      
       proxyRequest.headers.delete('accept-encoding');
-    
+      
       const referer = request.headers.get('referer');
       if (referer) {
         try {
@@ -217,31 +306,50 @@ export default async (request: Request, context: Context) => {
       } else {
         proxyRequest.headers.set('referer', `${targetUrl.protocol}//${targetUrl.host}/`);
       }
-    
+      
       const response = await fetch(proxyRequest);
-    
+      
       let newResponse = new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
         headers: response.headers
       });
-    
+      
+      // 🔥 处理 M3U8 文件的代理请求
+      const contentType = response.headers.get('content-type') || '';
+      const isM3U8 = M3U8_CONTENT_TYPES.some(type => contentType.includes(type)) || 
+                     targetUrl.pathname.endsWith('.m3u8');
+      
+      if (isM3U8) {
+        context.log(`[Proxy] Processing M3U8 response: ${targetUrl.pathname}`);
+        const textContent = await response.clone().text();
+        const rewrittenContent = rewriteM3U8(textContent, targetUrl, url.origin, '/proxy', context);
+        
+        newResponse = new Response(rewrittenContent, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers
+        });
+        newResponse.headers.set('Content-Type', 'application/vnd.apple.mpegurl');
+        newResponse.headers.set('Cache-Control', 'public, max-age=3600');
+      }
+      
       newResponse.headers.set('Access-Control-Allow-Origin', '*');
       newResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
       newResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Range');
-    
+      
       newResponse.headers.delete('Content-Security-Policy');
       newResponse.headers.delete('Content-Security-Policy-Report-Only');
       newResponse.headers.delete('X-Frame-Options');
       newResponse.headers.delete('X-Content-Type-Options');
-    
+      
       if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
         const location = response.headers.get('location')!;
         const redirectedUrl = new URL(location, targetUrl);
         const newLocation = `${url.origin}/proxy/${encodeURIComponent(redirectedUrl.toString())}`;
         newResponse.headers.set('Location', newLocation);
       }
-    
+      
       return newResponse;
     } catch (error) {
       context.log(`Error proxying generic URL: ${error}`);
@@ -294,14 +402,14 @@ export default async (request: Request, context: Context) => {
       });
 
       proxyRequest.headers.set("Host", targetUrl.host);
-    
+      
       const clientIp = context.ip || request.headers.get('x-nf-client-connection-ip') || "";
       proxyRequest.headers.set('X-Forwarded-For', clientIp);
       proxyRequest.headers.set('X-Forwarded-Host', url.host);
       proxyRequest.headers.set('X-Forwarded-Proto', url.protocol.replace(':', ''));
-    
+      
       proxyRequest.headers.delete('accept-encoding');
-    
+      
       const referer = request.headers.get('referer');
       if (referer) {
         try {
@@ -314,93 +422,112 @@ export default async (request: Request, context: Context) => {
       } else {
         proxyRequest.headers.set('referer', `${targetUrl.protocol}//${targetUrl.host}/`);
       }
-    
+      
       const response = await fetch(proxyRequest);
-    
+      
       const contentType = response.headers.get('content-type') || '';
-    
+      
       let newResponse: Response;
-    
+      
       const needsRewrite = HTML_CONTENT_TYPES.some(type => contentType.includes(type)) || 
                            CSS_CONTENT_TYPES.some(type => contentType.includes(type)) ||
-                           JS_CONTENT_TYPES.some(type => contentType.includes(type));
-                         
+                           JS_CONTENT_TYPES.some(type => contentType.includes(type)) ||
+                           M3U8_CONTENT_TYPES.some(type => contentType.includes(type)) ||
+                           targetUrl.pathname.endsWith('.m3u8');
+                           
       if (needsRewrite) {
         const clonedResponse = response.clone();
         let content = await clonedResponse.text();
-      
+        
         const targetDomain = targetUrl.host;
         const targetOrigin = targetUrl.origin;
         const targetPathBase = targetUrl.pathname.substring(0, targetUrl.pathname.lastIndexOf('/') + 1);
-      
-        if (HTML_CONTENT_TYPES.some(type => contentType.includes(type))) {
+        
+        // 🔥 M3U8 文件处理
+        const isM3U8 = M3U8_CONTENT_TYPES.some(type => contentType.includes(type)) || 
+                       targetUrl.pathname.endsWith('.m3u8');
+                       
+        if (isM3U8) {
+          context.log(`[Site Proxy] Processing M3U8: ${targetUrl.pathname}`);
+          content = rewriteM3U8(content, targetUrl, url.origin, matchedPrefix!, context);
+          
+          newResponse = new Response(content, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers
+          });
+          newResponse.headers.set('Content-Type', 'application/vnd.apple.mpegurl');
+          newResponse.headers.set('Cache-Control', 'public, max-age=3600');
+        }
+        // HTML 处理
+        else if (HTML_CONTENT_TYPES.some(type => contentType.includes(type))) {
           content = content.replace(
             new RegExp(`(href|src|action|content)=["']https?://${targetDomain}(/[^"']*?)["']`, 'gi'),
             `$1="${url.origin}${matchedPrefix}$2"`
           );
-        
+          
           content = content.replace(
             new RegExp(`(href|src|action|content)=["']//${targetDomain}(/[^"']*?)["']`, 'gi'),
             `$1="${url.origin}${matchedPrefix}$2"`
           );
-        
+          
           content = content.replace(
             new RegExp(`(href|src|action|content)=["'](/[^"']*?)["']`, 'gi'),
             `$1="${url.origin}${matchedPrefix}$2"`
           );
-        
+          
           content = content.replace(
             new RegExp(`url\\(['"]?https?://${targetDomain}(/[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
-        
+          
           content = content.replace(
             new RegExp(`url\\(['"]?//${targetDomain}(/[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
-        
+          
           content = content.replace(
             new RegExp(`url\\(['"]?(/[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
-        
+          
           content = content.replace(
             new RegExp(`<base[^>]*href=["']https?://${targetDomain}(?:/[^"']*?)?["'][^>]*>`, 'gi'),
             `<base href="${url.origin}${matchedPrefix}/">`
           );
-        
+          
           content = content.replace(
             /(href|src|action|data-src|data-href)=["']((?!https?:\/\/|\/\/|\/)[^"']+)["']/gi,
             `$1="${url.origin}${matchedPrefix}/${targetPathBase}$2"`
           );
-        
+          
           content = content.replace(
             new RegExp(`"(url|path|endpoint|src|href)"\\s*:\\s*"https?://${targetDomain}(/[^"]*?)"`, 'gi'),
             `"$1":"${url.origin}${matchedPrefix}$2"`
           );
-        
+          
           content = content.replace(
             /"(url|path|endpoint|src|href)"\s*:\s*"(\/[^"]*?)"/gi,
             `"$1":"${url.origin}${matchedPrefix}$2"`
           );
-        
+          
           content = content.replace(
             new RegExp(`['"]https?://${targetDomain}(/[^"']*?)['"]`, 'gi'),
             `"${url.origin}${matchedPrefix}$1"`
           );
-        
+          
           content = content.replace(
             /([^a-zA-Z0-9_])(['"])(\/[^\/'"]+\/[^'"]*?)(['"])/g,
             `$1$2${url.origin}${matchedPrefix}$3$4`
           );
-        
+          
           content = content.replace(
             /srcset=["']([^"']+)["']/gi,
             (match, srcset) => {
               const newSrcset = srcset.split(',').map((src: string) => {
                 const [srcUrl, descriptor] = src.trim().split(/\s+/);
                 let newUrl = srcUrl;
-              
+                
                 if (srcUrl.startsWith('http://') || srcUrl.startsWith('https://')) {
                   if (srcUrl.includes(targetDomain)) {
                     newUrl = srcUrl.replace(
@@ -418,28 +545,28 @@ export default async (request: Request, context: Context) => {
                 } else if (srcUrl.startsWith('/')) {
                   newUrl = `${url.origin}${matchedPrefix}${srcUrl}`;
                 }
-              
+                
                 return descriptor ? `${newUrl} ${descriptor}` : newUrl;
               }).join(', ');
-            
+              
               return `srcset="${newSrcset}"`;
             }
           );
-        
+          
           if (SPECIAL_REPLACEMENTS[targetDomain as keyof typeof SPECIAL_REPLACEMENTS]) {
             const replacements = SPECIAL_REPLACEMENTS[targetDomain as keyof typeof SPECIAL_REPLACEMENTS];
             for (const replacement of replacements) {
               content = content.replace(replacement.pattern, replacement.replacement as any);
             }
           }
-        
+          
           const prefixWithoutSlash = matchedPrefix.substring(1);
           const fixScript = `
           <script>
           (function() {
             const proxyPrefix = '${matchedPrefix}';
             const proxyPrefixName = '${prefixWithoutSlash}';
-          
+            
             if (window.location.pathname.startsWith(proxyPrefix)) {
               const originalFetch = window.fetch;
               window.fetch = function(resource, init) {
@@ -461,7 +588,7 @@ export default async (request: Request, context: Context) => {
                     el.setAttribute('src', proxyPrefix + src);
                   }
                 });
-              
+                
                 document.querySelectorAll('link[rel="preload"][href^="/_next/"]').forEach(function(el) {
                   const href = el.getAttribute('href');
                   if (href && !href.startsWith(proxyPrefix)) {
@@ -507,7 +634,7 @@ export default async (request: Request, context: Context) => {
                           }
                         });
                       });
-                    
+                      
                       const elementsWithStyle = node.querySelectorAll('[style*="url("]');
                       elementsWithStyle.forEach(function(el) {
                         let style = el.getAttribute('style');
@@ -522,7 +649,7 @@ export default async (request: Request, context: Context) => {
                 }
               });
             });
-          
+            
             generalObserver.observe(document.body, {
               childList: true,
               subtree: true
@@ -530,101 +657,118 @@ export default async (request: Request, context: Context) => {
           })();
           </script>
           `;
-        
+          
           const bodyCloseTagPos = content.lastIndexOf('</body>');
           if (bodyCloseTagPos !== -1) {
             content = content.substring(0, bodyCloseTagPos) + fixScript + content.substring(bodyCloseTagPos);
           } else {
             content += fixScript;
           }
+          
+          newResponse = new Response(content, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers
+          });
         }
-      
-        if (CSS_CONTENT_TYPES.some(type => contentType.includes(type))) {
+        // CSS 处理
+        else if (CSS_CONTENT_TYPES.some(type => contentType.includes(type))) {
           content = content.replace(
             new RegExp(`url\\(['"]?https?://${targetDomain}(/[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
-        
+          
           content = content.replace(
             new RegExp(`url\\(['"]?//${targetDomain}(/[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
-        
+          
           content = content.replace(
             new RegExp(`url\\(['"]?(/[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
-        
+          
           const cssPath = targetUrl.pathname;
           const cssDir = cssPath.substring(0, cssPath.lastIndexOf('/') + 1);
-        
-          // 🔧 这里修复了中文逗号问题
+          
           content = content.replace(
             /url\(['"]?(?!https?:\/\/|\/\/|\/|data:|#)([^)'"]*)['"]?\)/gi,
             `url(${url.origin}${matchedPrefix}${cssDir}$1)`
           );
+          
+          newResponse = new Response(content, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers
+          });
         }
-      
-        if (JS_CONTENT_TYPES.some(type => contentType.includes(type))) {
+        // JS 处理
+        else if (JS_CONTENT_TYPES.some(type => contentType.includes(type))) {
           content = content.replace(
             new RegExp(`(['"])https?://${targetDomain}(/[^'"]*?)(['"])`, 'gi'),
             `$1${url.origin}${matchedPrefix}$2$3`
           );
-        
+          
           content = content.replace(
             new RegExp(`(['"])//${targetDomain}(/[^'"]*?)(['"])`, 'gi'),
             `$1${url.origin}${matchedPrefix}$2$3`
           );
-        
+          
           content = content.replace(
             /(['"])(\/[^'"]*?\.(?:js|css|png|jpg|jpeg|gif|svg|webp|ico|mp3|mp4|webm|ogg|woff|woff2|ttf|eot))(['"])/gi,
             `$1${url.origin}${matchedPrefix}$2$3`
           );
+          
+          newResponse = new Response(content, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers
+          });
+        } else {
+          newResponse = new Response(content, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers
+          });
         }
-      
-        newResponse = new Response(content, {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers
-        });
       } else {
         newResponse = new Response(response.body, {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers
+          status: response。status，
+          statusText: response。statusText，
+          headers: response。headers
         });
       }
-    
-      newResponse.headers.set('Access-Control-Allow-Origin', '*');
-      newResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-      newResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Range');
-    
-      newResponse.headers.delete('Content-Security-Policy');
-      newResponse.headers.delete('Content-Security-Policy-Report-Only');
-      newResponse.headers.delete('X-Frame-Options');
-      newResponse.headers.delete('X-Content-Type-Options');
-    
-      if (HTML_CONTENT_TYPES.some(type => contentType.includes(type))) {
-        newResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-        newResponse.headers.set('Pragma', 'no-cache');
-        newResponse.headers.set('Expires', '0');
-      } else {
-        newResponse.headers.set('Cache-Control', 'public, max-age=86400');
+      
+      newResponse。headers。set('Access-Control-Allow-Origin'， '*');
+      newResponse。headers。set('Access-Control-Allow-Methods'， 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+      newResponse。headers。set('Access-Control-Allow-Headers'， 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Range');
+      
+      newResponse。headers。delete('Content-Security-Policy');
+      newResponse。headers。delete('Content-Security-Policy-Report-Only');
+      newResponse。headers。delete('X-Frame-Options');
+      newResponse。headers。delete('X-Content-Type-Options');
+      
+      if (HTML_CONTENT_TYPES。some(type => contentType.includes(type))) {
+        newResponse。headers。set('Cache-Control'， 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        newResponse。headers。set('Pragma'， 'no-cache');
+        newResponse。headers。set('Expires'， '0');
+      } else if (!isM3U8) {
+        newResponse。headers。set('Cache-Control'， 'public, max-age=86400');
       }
-    
-      if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
+      
+      if (response。status >= 300 && response。status < 400 && response。headers。has('location')) {
           const location = response.headers.get('location')!;
           const redirectedUrl = new URL(location, targetUrl);
 
-          if (redirectedUrl.origin === targetUrl.origin) {
+          if (redirectedUrl。origin === targetUrl。origin) {
               const newLocation = url.origin + matchedPrefix + redirectedUrl.pathname + redirectedUrl.search;
-              context.log(`Rewriting redirect from ${location} to ${newLocation}`);
-              newResponse.headers.set('Location', newLocation);
+              context。log(`Rewriting redirect from ${location} to ${newLocation}`);
+              newResponse。headers。set('Location'， newLocation);
           } else {
-              context.log(`Proxying redirect to external location: ${location}`);
+              context。log(`Proxying redirect to external location: ${location}`);
           }
       }
-    
+      
       return newResponse;
 
     } catch (error) {
@@ -639,5 +783,11 @@ export default async (request: Request, context: Context) => {
     }
   }
 
-  return;
+  return new Response('未找到匹配的代理规则', { 
+    status: 404,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Content-Type': 'text/plain;charset=UTF-8'
+    }
+  });
 };
