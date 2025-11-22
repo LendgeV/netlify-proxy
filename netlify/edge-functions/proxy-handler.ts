@@ -3,7 +3,7 @@ import type { Context } from "@netlify/edge-functions";
 
 // 定义你的代理规则
 const PROXY_CONFIG = {
-  // ===== API 服务器 =====
+  // ===== API =====
   groq: "api.groq.com/openai",
   groq_g4f: "g4f.dev/api/groq",
   openrouter: "openrouter.ai/api",
@@ -42,7 +42,7 @@ const PROXY_CONFIG = {
   navy: "api.navy",
   void: "api.voidai.app",
 
-  // ===== 任意网址代理 =====
+  // ===== 网站 =====
   hanime: "hanime1.me",
   x: "hx.com",
   github: "github.com",
