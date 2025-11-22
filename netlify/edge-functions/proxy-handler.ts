@@ -592,7 +592,7 @@ export default async (request: Request, context: Context) => {
           const cssDir = cssPath.substring(0, cssPath.lastIndexOf('/') + 1);
           
           content = content.replace(
-            /url\(['"]?(?!https?:\/\/|\/\/|\/|data:|#)([^)'"]*)['"]?\)/gi，
+            /url\(['"]?(?!https?:\/\/|\/\/|\/|data:|#)([^)'"]*)['"]?\)/gi,
             `url(${url.origin}${matchedPrefix}${cssDir}$1)`
           );
         }
