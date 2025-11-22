@@ -2,31 +2,32 @@
 import type { Context } from "@netlify/edge-functions";
 
 // 定义你的代理规则：路径前缀 => 目标基础 URL
+// 注意：
+// 1. 路径前缀会自动添加前导斜杠，无需手动添加
+// 2. 目标URL会自动添加 https:// 协议，无需手动添加
+// 3. 目标URL末尾的斜杠会被自动处理
 const PROXY_CONFIG = {
   // API 服务器
-  "/discord": "https://discord.com/api",
-  "/telegram": "https://api.telegram.org",
-  "/openai": "https://api.openai.com",
-  "/claude": "https://api.anthropic.com",
-  "/gemini": "https://generativelanguage.googleapis.com",
-  "/meta": "https://www.meta.ai/api",
-  "/groq": "https://api.groq.com/openai",
-  "/xai": "https://api.x.ai",
-  "/cohere": "https://api.cohere.ai",
-  "/huggingface": "https://api-inference.huggingface.co",
-  "/together": "https://api.together.xyz",
-  "/novita": "https://api.novita.ai",
-  "/portkey": "https://api.portkey.ai",
-  "/fireworks": "https://api.fireworks.ai",
-  "/openrouter": "https://openrouter.ai/api",
+  "discord": "discord.com/api",
+  "telegram": "api.telegram.org",
+  "openai": "api.openai.com",
+  "claude": "api.anthropic.com",
+  "gemini": "generativelanguage.googleapis.com",
+  "meta": "www.meta.ai/api",
+  "groq": "api.groq.com/openai",
+  "xai": "api.x.ai",
+  "cohere": "api.cohere.ai",
+  "huggingface": "api-inference.huggingface.co",
+  "together": "api.together.xyz",
+  "novita": "api.novita.ai",
+  "portkey": "api.portkey.ai",
+  "fireworks": "api.fireworks.ai",
+  "openrouter": "openrouter.ai/api",
+  "vapi": "v-api.zeabur.app",
   // 任意网址
-  "/hexo": "https://hexo-gally.vercel.app", 
-  "/hexo2": "https://hexo-987.pages.dev",
-  "/halo": "https://blog.gally.dpdns.org",
-  "/kuma": "https://kuma.gally.dpdns.org",
-  "/hf": "https://huggingface.co",
-  "/tv": "https://tv.gally.ddns-ip.net",
-  "/news": "https://newsnow-ahm.pages.dev"
+  "hanime": "hanime1.me", 
+  "hexo": "hexo-gally.vercel.app",
+  "tv": "tv.gally.ddns-ip.net",
 };
 
 // 需要修复路径的内容类型
@@ -134,6 +135,25 @@ const SPECIAL_REPLACEMENTS: Record<string, Array<{pattern: RegExp, replacement: 
   ]
 };
 
+/**
+ * 标准化URL - 确保有协议前缀
+ */
+function normalizeUrl(urlString: string): string {
+  // 如果已经有协议，直接返回
+  if (urlString.startsWith('http://') || urlString.startsWith('https://')) {
+    return urlString;
+  }
+  // 否则添加 https://
+  return 'https://' + urlString;
+}
+
+/**
+ * 标准化路径前缀 - 确保以 / 开头
+ */
+function normalizePathPrefix(prefix: string): string {
+  return prefix.startsWith('/') ? prefix : '/' + prefix;
+}
+
 export default async (request: Request, context: Context) => {
   // 处理 CORS 预检请求 (OPTIONS)
   if (request.method === "OPTIONS") {
@@ -164,9 +184,7 @@ export default async (request: Request, context: Context) => {
       }
       
       // 确保URL以http://或https://开头
-      if (!targetUrlString.startsWith('http://') && !targetUrlString.startsWith('https://')) {
-        targetUrlString = 'https://' + targetUrlString;
-      }
+      targetUrlString = normalizeUrl(targetUrlString);
       
       const targetUrl = new URL(targetUrlString);
       
@@ -260,13 +278,21 @@ export default async (request: Request, context: Context) => {
   let targetBaseUrl: string | null = null;
   let matchedPrefix: string | null = null;
 
+  // 将配置键转换为标准化的路径前缀（添加 /）
+  const normalizedConfig: Record<string, string> = {};
+  for (const [key, value] of Object.entries(PROXY_CONFIG)) {
+    const normalizedKey = normalizePathPrefix(key);
+    const normalizedValue = normalizeUrl(value);
+    normalizedConfig[normalizedKey] = normalizedValue;
+  }
+
   // 倒序遍历，以便更具体的路径（如 /api/v2）优先于 /api
-  const prefixes = Object.keys(PROXY_CONFIG).sort().reverse();
+  const prefixes = Object.keys(normalizedConfig).sort().reverse();
 
   for (const prefix of prefixes) {
     // 确保匹配的是完整的前缀部分，避免 /apixyz 匹配 /api
     if (path === prefix || path.startsWith(prefix + '/')) {
-      targetBaseUrl = PROXY_CONFIG[prefix as keyof typeof PROXY_CONFIG];
+      targetBaseUrl = normalizedConfig[prefix];
       matchedPrefix = prefix;
       break; // 找到第一个（最具体的）匹配就停止
     }
@@ -398,7 +424,7 @@ export default async (request: Request, context: Context) => {
           );
           
           // 9. 处理可能的 JSON 资源路径
-          content = content.replace(
+          content = content.替换(
             new RegExp(`"(url|path|endpoint|src|href)"\\s*:\\s*"https?://${targetDomain}(/[^"]*?)"`, 'gi'),
             `"$1":"${url.origin}${matchedPrefix}$2"`
           );
@@ -417,17 +443,17 @@ export default async (request: Request, context: Context) => {
           
           // 11. 处理 JavaScript 中的根路径引用
           content = content.replace(
-            /([^a-zA-Z0-9_])(['"])(\/[^\/'"]+\/[^'"]*?)(['"])/g,
-            `$1$2${url.origin}${matchedPrefix}$3$4`
+            /([^a-zA-Z0-9_])(['"])(\/[^\/'"]+\/[^'"]*?)(['"])/g，
+            `$1$2${url。origin}${matchedPrefix}$3$4`
           );
           
           // 12. 处理 srcset 属性
-          content = content.replace(
+          content = content。replace(
             /srcset=["']([^"']+)["']/gi,
             (match, srcset) => {
               // 处理 srcset 中的每个 URL
               const newSrcset = srcset.split(',').map((src: string) => {
-                const [srcUrl, descriptor] = src.trim().split(/\s+/);
+                const [srcUrl， descriptor] = src。trim().split(/\s+/);
                 let newUrl = srcUrl;
                 
                 if (srcUrl.startsWith('http://') || srcUrl.startsWith('https://')) {
@@ -441,7 +467,7 @@ export default async (request: Request, context: Context) => {
                   if (srcUrl.includes(targetDomain)) {
                     newUrl = srcUrl.replace(
                       new RegExp(`//${targetDomain}(/[^\\s]*)`, 'i'),
-                      `${url.origin}${matchedPrefix}$1`
+                      `${url。origin}${matchedPrefix}$1`
                     );
                   }
                 } else if (srcUrl.startsWith('/')) {
@@ -449,7 +475,7 @@ export default async (request: Request, context: Context) => {
                 }
                 
                 return descriptor ? `${newUrl} ${descriptor}` : newUrl;
-              }).join(', ');
+              })。join(', ');
               
               return `srcset="${newSrcset}"`;
             }
@@ -458,29 +484,33 @@ export default async (request: Request, context: Context) => {
           // 应用特定网站的替换规则
           if (SPECIAL_REPLACEMENTS[targetDomain as keyof typeof SPECIAL_REPLACEMENTS]) {
             const replacements = SPECIAL_REPLACEMENTS[targetDomain as keyof typeof SPECIAL_REPLACEMENTS];
-            for (const replacement of replacements) {
+            for (const replacement / replacements) {
               content = content.replace(replacement.pattern, replacement.replacement as any);
             }
           }
           
           // 在页面底部添加修复脚本，用于动态加载的内容
+          const prefixWithoutSlash = matchedPrefix.substring(1); // 去掉开头的 /
           const fixScript = `
           <script>
           // 修复动态加载的资源路径
           (function() {
+            const proxyPrefix = '${matchedPrefix}';
+            const proxyPrefixName = '${prefixWithoutSlash}';
+            
             // 特殊处理 Vercel 的 Next.js 动态加载
-            if (window.location.pathname.startsWith('/hexo')) {
+            if (window.location.pathname.startsWith(proxyPrefix)) {
               // 拦截 fetch 请求
               const originalFetch = window.fetch;
               window.fetch = function(resource, init) {
                 if (typeof resource === 'string') {
                   // 对于 next-data 请求特殊处理
-                  if (resource.includes('/_next/data/') && !resource.startsWith('/hexo')) {
-                    resource = '/hexo' + resource;
+                  if (resource.includes('/_next/data/') && !resource.startsWith(proxyPrefix)) {
+                    resource = proxyPrefix + resource;
                   }
                   // 其他 API 请求
-                  if (resource.startsWith('/api/') && !resource.startsWith('/hexo')) {
-                    resource = '/hexo' + resource;
+                  if (resource.startsWith('/api/') && !resource.startsWith(proxyPrefix)) {
+                    resource = proxyPrefix + resource;
                   }
                 }
                 return originalFetch.call(this, resource, init);
@@ -491,16 +521,16 @@ export default async (request: Request, context: Context) => {
                 // 查找并修复 next/script 加载的脚本
                 document.querySelectorAll('script[src^="/_next/"]').forEach(function(el) {
                   const src = el.getAttribute('src');
-                  if (src && !src.startsWith('/hexo')) {
-                    el.setAttribute('src', '/hexo' + src);
+                  if (src && !src.startsWith(proxyPrefix)) {
+                    el.setAttribute('src', proxyPrefix + src);
                   }
                 });
                 
                 // 修复 next/link 预加载
                 document.querySelectorAll('link[rel="preload"][href^="/_next/"]').forEach(function(el) {
                   const href = el.getAttribute('href');
-                  if (href && !href.startsWith('/hexo')) {
-                    el.setAttribute('href', '/hexo' + href);
+                  if (href && !href.startsWith(proxyPrefix)) {
+                    el.setAttribute('href', proxyPrefix + href);
                   }
                 });
               });
@@ -535,8 +565,8 @@ export default async (request: Request, context: Context) => {
                             let val = el.getAttribute(attr);
                             if (val && !val.match(/^(https?:|\/\/|${url.origin})/)) {
                               if (val.startsWith('/')) {
-                                if (window.location.pathname.startsWith('/hexo') && val.startsWith('/_next/') && !val.startsWith('/hexo')) {
-                                  el.setAttribute(attr, '/hexo' + val);
+                                if (window.location.pathname.startsWith(proxyPrefix) && val.startsWith('/_next/') && !val.startsWith(proxyPrefix)) {
+                                  el.setAttribute(attr, proxyPrefix + val);
                                 } else {
                                   el.setAttribute(attr, '${url.origin}${matchedPrefix}' + val);
                                 }
@@ -552,7 +582,7 @@ export default async (request: Request, context: Context) => {
                         let style = el.getAttribute('style');
                         if (style) {
                           style = style.replace(/url\\(['"]?(\\/[^)'"]*?)['"]?\\)/gi, 
-                                               'url(${url.origin}${matchedPrefix}$1)');
+                                               'url(${url。origin}${matchedPrefix}$1)');
                           el.setAttribute('style', style);
                         }
                       });
@@ -591,13 +621,13 @@ export default async (request: Request, context: Context) => {
           // 2. 替换协议相对路径 url(//...)
           content = content.replace(
             new RegExp(`url\\(['"]?//${targetDomain}(/[^)'"]*?)['"]?\\)`, 'gi'),
-            `url(${url.origin}${matchedPrefix}$1)`
+            `url(${url。origin}${matchedPrefix}$1)`
           );
           
           // 3. 替换根目录相对路径 url(/...)
           content = content.replace(
             new RegExp(`url\\(['"]?(/[^)'"]*?)['"]?\\)`, 'gi'),
-            `url(${url.origin}${matchedPrefix}$1)`
+            `url(${url。origin}${matchedPrefix}$1)`
           );
           
           // 4. 处理相对路径 (不以 / 开头)
@@ -648,50 +678,50 @@ export default async (request: Request, context: Context) => {
       }
       
       // 添加 CORS 头
-      newResponse.headers.set('Access-Control-Allow-Origin', '*');
-      newResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-      newResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Range');
+      newResponse。headers。set('Access-Control-Allow-Origin'， '*');
+      newResponse.headers.set('Access-Control-Allow-Methods'， 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+      newResponse。headers。set('Access-Control-Allow-Headers'， 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Range');
       
       // 移除可能导致问题的安全头部
-      newResponse.headers.delete('Content-Security-Policy');
-      newResponse.headers.delete('Content-Security-Policy-Report-Only');
+      newResponse。headers。delete('Content-Security-Policy');
+      newResponse。headers。delete('Content-Security-Policy-Report-Only');
       newResponse.headers.delete('X-Frame-Options');
-      newResponse.headers.delete('X-Content-Type-Options');
+      newResponse。headers。delete('X-Content-Type-Options');
       
       // 确保不缓存可能包含动态内容的响应
       if (HTML_CONTENT_TYPES.some(type => contentType.includes(type))) {
-        newResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-        newResponse.headers.set('Pragma', 'no-cache');
-        newResponse.headers.set('Expires', '0');
+        newResponse。headers。set('Cache-Control'， 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        newResponse.headers.set('Pragma'， 'no-cache');
+        newResponse。headers。set('Expires'， '0');
       } else {
         // 对于静态资源，设置较长的缓存时间
-        newResponse.headers.set('Cache-Control', 'public, max-age=86400'); // 1天
+        newResponse。headers。set('Cache-Control'， 'public, max-age=86400'); // 1天
       }
       
       // 如果目标服务器返回重定向，需要构造正确的重定向URL
-      if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
-          const location = response.headers.get('location')!;
+      if (response。status >= 300 && response。status < 400 && response。headers。has('location')) {
+          const location = response。headers。get('location')!;
           const redirectedUrl = new URL(location, targetUrl); // 解析相对或绝对 Location
 
           // 如果重定向回代理源本身，则需要重写为原始主机名下的路径
           if (redirectedUrl.origin === targetUrl.origin) {
               const newLocation = url.origin + matchedPrefix + redirectedUrl.pathname + redirectedUrl.search;
-              context.log(`Rewriting redirect from ${location} to ${newLocation}`);
-              newResponse.headers.set('Location', newLocation);
+              context。log(`Rewriting redirect from ${location} 到 ${newLocation}`);
+              newResponse.headers.set('Location'， newLocation);
           } else {
               // 如果重定向到外部域，则直接使用
-              context.log(`Proxying redirect to external location: ${location}`);
+              context。log(`Proxying redirect to external location: ${location}`);
           }
       }
       
       return newResponse;
 
     } catch (error) {
-      context.log("Error fetching target URL:", error);
-      return new Response("代理请求失败", { 
+      context。log("Error fetching target URL:"， error);
+      return new Response("代理请求失败"， { 
         status: 502,
         headers: {
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin': '*'，
           'Content-Type': 'text/plain;charset=UTF-8'
         }
       });
@@ -700,4 +730,4 @@ export default async (request: Request, context: Context) => {
 
   // 如果没有匹配的代理规则，则不处理此请求，交由 Netlify 的其他规则处理
   return;
-}; 
+};
