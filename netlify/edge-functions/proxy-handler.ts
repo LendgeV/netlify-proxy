@@ -117,6 +117,10 @@ const SPECIAL_REPLACEMENTS: Record<string, Array<{pattern: RegExp, replacement: 
       pattern: /(?:src|href|content)=['"](?:\.?\/)?([^"']*\.(css|js|png|jpg|jpeg|gif|svg|webp|ico))["']/gi,
       replacement: (match: string, path: string, ext: string) => {
         if (path.startsWith('http')) return match;
+        // 🔧 排除 /proxy/ 路径
+        if (path.startsWith('proxy/')) return match;
+        if (path.startsWith('/proxy/')) return match;
+        
         if (path.startsWith('/')) {
           return match.replace(`"/${path.slice(1)}`, `"/tv/${path.slice(1)}`);
         }
@@ -127,6 +131,10 @@ const SPECIAL_REPLACEMENTS: Record<string, Array<{pattern: RegExp, replacement: 
       pattern: /url\(['"]?(?:\.?\/)?([^'")]*\.(png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot))['"]?\)/gi,
       replacement: (match: string, path: string) => {
         if (path.startsWith('http')) return match;
+        // 🔧 排除 /proxy/ 路径
+        if (path.startsWith('proxy/')) return match;
+        if (path.startsWith('/proxy/')) return match;
+        
         if (path.startsWith('/')) {
           return match.replace(`(/${path.slice(1)}`, `(/tv/${path.slice(1)}`);
         }
@@ -334,6 +342,7 @@ export default async (request: Request, context: Context) => {
         const targetPathBase = targetUrl.pathname.substring(0, targetUrl.pathname.lastIndexOf('/') + 1);
         
         if (HTML_CONTENT_TYPES.some(type => contentType.includes(type))) {
+          // 🔧 修改：排除 /proxy/ 路径的重写
           content = content.replace(
             new RegExp(`(href|src|action|content)=["']https?://${targetDomain}(/[^"']*?)["']`, 'gi'),
             `$1="${url.origin}${matchedPrefix}$2"`
@@ -344,8 +353,9 @@ export default async (request: Request, context: Context) => {
             `$1="${url.origin}${matchedPrefix}$2"`
           );
           
+          // 🔧 修改：使用负向前瞻排除 /proxy/ 路径
           content = content.replace(
-            new RegExp(`(href|src|action|content)=["'](/[^"']*?)["']`, 'gi'),
+            new RegExp(`(href|src|action|content)=["'](/(?!proxy/)[^"']*?)["']`, 'gi'),
             `$1="${url.origin}${matchedPrefix}$2"`
           );
           
@@ -359,8 +369,9 @@ export default async (request: Request, context: Context) => {
             `url(${url.origin}${matchedPrefix}$1)`
           );
           
+          // 🔧 修改：排除 /proxy/ 路径
           content = content.replace(
-            new RegExp(`url\\(['"]?(/[^)'"]*?)['"]?\\)`, 'gi'),
+            new RegExp(`url\\(['"]?(/(?!proxy/)[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
           
@@ -379,8 +390,9 @@ export default async (request: Request, context: Context) => {
             `"$1":"${url.origin}${matchedPrefix}$2"`
           );
           
+          // 🔧 修改：排除 /proxy/ 路径
           content = content.replace(
-            /"(url|path|endpoint|src|href)"\s*:\s*"(\/[^"]*?)"/gi,
+            /"(url|path|endpoint|src|href)"\s*:\s*"(\/(?!proxy\/)[^"]*?)"/gi,
             `"$1":"${url.origin}${matchedPrefix}$2"`
           );
           
@@ -416,7 +428,10 @@ export default async (request: Request, context: Context) => {
                     );
                   }
                 } else if (srcUrl.startsWith('/')) {
-                  newUrl = `${url.origin}${matchedPrefix}${srcUrl}`;
+                  // 🔧 修改：排除 /proxy/ 路径
+                  if (!srcUrl.startsWith('/proxy/')) {
+                    newUrl = `${url.origin}${matchedPrefix}${srcUrl}`;
+                  }
                 }
                 
                 return descriptor ? `${newUrl} ${descriptor}` : newUrl;
@@ -444,6 +459,11 @@ export default async (request: Request, context: Context) => {
               const originalFetch = window.fetch;
               window.fetch = function(resource, init) {
                 if (typeof resource === 'string') {
+                  // 🔧 排除 /proxy/ 路径
+                  if (resource.startsWith('/proxy/')) {
+                    return originalFetch.call(this, resource, init);
+                  }
+                  
                   if (resource.includes('/_next/data/') && !resource.startsWith(proxyPrefix)) {
                     resource = proxyPrefix + resource;
                   }
@@ -496,6 +516,11 @@ export default async (request: Request, context: Context) => {
                           if (el.hasAttribute(attr)) {
                             let val = el.getAttribute(attr);
                             if (val && !val.match(/^(https?:|\/\/|${url.origin})/)) {
+                              // 🔧 排除 /proxy/ 路径
+                              if (val.startsWith('/proxy/')) {
+                                return;
+                              }
+                              
                               if (val.startsWith('/')) {
                                 if (window.location.pathname.startsWith(proxyPrefix) && val.startsWith('/_next/') && !val.startsWith(proxyPrefix)) {
                                   el.setAttribute(attr, proxyPrefix + val);
@@ -512,7 +537,7 @@ export default async (request: Request, context: Context) => {
                       elementsWithStyle.forEach(function(el) {
                         let style = el.getAttribute('style');
                         if (style) {
-                          style = style.replace(/url\\(['"]?(\\/[^)'"]*?)['"]?\\)/gi, 
+                          style = style.replace(/url\\(['"]?(\\/(?!proxy\\/)[^)'"]*?)['"]?\\)/gi, 
                                                'url(${url.origin}${matchedPrefix}$1)');
                           el.setAttribute('style', style);
                         }
@@ -550,15 +575,15 @@ export default async (request: Request, context: Context) => {
             `url(${url.origin}${matchedPrefix}$1)`
           );
           
+          // 🔧 修改：排除 /proxy/ 路径
           content = content.replace(
-            new RegExp(`url\\(['"]?(/[^)'"]*?)['"]?\\)`, 'gi'),
+            new RegExp(`url\\(['"]?(/(?!proxy/)[^)'"]*?)['"]?\\)`, 'gi'),
             `url(${url.origin}${matchedPrefix}$1)`
           );
           
           const cssPath = targetUrl.pathname;
           const cssDir = cssPath.substring(0, cssPath.lastIndexOf('/') + 1);
           
-          // 🔧 这里修复了中文逗号问题
           content = content.replace(
             /url\(['"]?(?!https?:\/\/|\/\/|\/|data:|#)([^)'"]*)['"]?\)/gi,
             `url(${url.origin}${matchedPrefix}${cssDir}$1)`
@@ -576,8 +601,9 @@ export default async (request: Request, context: Context) => {
             `$1${url.origin}${matchedPrefix}$2$3`
           );
           
+          // 🔧 修改：排除 /proxy/ 路径
           content = content.replace(
-            /(['"])(\/[^'"]*?\.(?:js|css|png|jpg|jpeg|gif|svg|webp|ico|mp3|mp4|webm|ogg|woff|woff2|ttf|eot))(['"])/gi,
+            /(['"])(\/(?!proxy\/)(?:[^'"]*?\.(?:js|css|png|jpg|jpeg|gif|svg|webp|ico|mp3|mp4|webm|ogg|woff|woff2|ttf|eot)))(['"])/gi,
             `$1${url.origin}${matchedPrefix}$2$3`
           );
         }
