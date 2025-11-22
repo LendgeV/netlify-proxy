@@ -610,7 +610,7 @@ export default async (request: Request, context: Context) => {
         });
       }
       
-      newResponse.headers.set('Access-Control-Allow-Origin'， '*');
+      newResponse.headers.set('Access-Control-Allow-Origin', '*');
       newResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
       newResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Range');
       
