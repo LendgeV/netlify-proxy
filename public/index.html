@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>V Proxy - 代理服务面板</title>
+    <title>V Proxy - 高性能边缘代理服务</title>
+    <link rel="icon" href="https://tc-new.z.wiki/autoupload/f/f2pEzaiCVbr1cM3PJA99eFFgdAxwoXwxkzwo0m5dx3-yl5f0KlZfm6UsKj-HyTuv/20250807/ngkG/1080X2376/%E5%88%9D%E9%9F%B3%E6%9C%AA%E6%9D%A5.jpg" type="image/jpeg">
     <style>
         /* ===== CSS 变量体系 ===== */
         :root {
-            /* 配色系统 - 深色主题 */
+            /* 深色主题配色 */
             --bg-primary: #0a0a0a;
             --bg-surface: #111111;
             --bg-elevated: #1a1a1a;
@@ -24,7 +25,7 @@
             --text-tertiary: rgba(255, 255, 255, 0.45);
             --text-disabled: rgba(255, 255, 255, 0.25);
             
-            /* 品牌色 - 降饱和蓝紫 */
+            /* 品牌色 */
             --accent-primary: #6366f1;
             --accent-hover: #7c7ff2;
             --accent-subtle: rgba(99, 102, 241, 0.15);
@@ -34,6 +35,8 @@
             --success: #10b981;
             --success-subtle: rgba(16, 185, 129, 0.15);
             --warning: #f59e0b;
+            --info: #3b82f6;
+            --info-subtle: rgba(59, 130, 246, 0.15);
             
             /* 间距体系 */
             --spacing-xs: 4px;
@@ -49,6 +52,7 @@
             --radius-md: 10px;
             --radius-lg: 14px;
             --radius-xl: 20px;
+            --radius-full: 9999px;
             
             /* 阴影层次 */
             --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.12);
@@ -68,6 +72,43 @@
             --text-xl: 24px;
             --text-2xl: 32px;
             --text-3xl: 48px;
+            
+            /* 过渡时长 */
+            --transition-fast: 0.15s;
+            --transition-base: 0.25s;
+            --transition-slow: 0.35s;
+            --transition-slower: 0.5s;
+            
+            /* 缓动函数 */
+            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+            --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* ===== 浅色主题配色 ===== */
+        [data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-surface: #f8f9fa;
+            --bg-elevated: #ffffff;
+            --bg-hover: #f1f3f5;
+            
+            --border-subtle: rgba(0, 0, 0, 0.06);
+            --border-default: rgba(0, 0, 0, 0.1);
+            --border-strong: rgba(0, 0, 0, 0.15);
+            
+            --text-primary: rgba(0, 0, 0, 0.92);
+            --text-secondary: rgba(0, 0, 0, 0.65);
+            --text-tertiary: rgba(0, 0, 0, 0.45);
+            --text-disabled: rgba(0, 0, 0, 0.25);
+            
+            --accent-primary: #5b5fc7;
+            --accent-hover: #6366f1;
+            --accent-subtle: rgba(91, 95, 199, 0.1);
+            --accent-border: rgba(91, 95, 199, 0.25);
+            
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08);
+            --shadow-glow: 0 0 20px rgba(91, 95, 199, 0.2);
         }
         
         /* ===== 全局重置 ===== */
@@ -78,6 +119,10 @@
         }
         
         /* ===== 基础样式 ===== */
+        html {
+            scroll-behavior: smooth;
+        }
+        
         body {
             font-family: var(--font-sans);
             background: var(--bg-primary);
@@ -86,6 +131,8 @@
             overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            transition: background-color var(--transition-slower) var(--ease-out),
+                        color var(--transition-slower) var(--ease-out);
         }
         
         /* ===== 网格装饰背景 ===== */
@@ -100,6 +147,8 @@
             -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 20%, transparent 80%);
             pointer-events: none;
             z-index: 0;
+            opacity: 1;
+            transition: opacity var(--transition-slower) var(--ease-out);
         }
         
         /* ===== 顶部光带装饰 ===== */
@@ -117,6 +166,8 @@
             );
             box-shadow: 0 0 40px var(--accent-primary);
             z-index: 100;
+            opacity: 0.8;
+            transition: opacity var(--transition-slower) var(--ease-out);
         }
         
         /* ===== 容器布局 ===== */
@@ -135,7 +186,37 @@
             padding-top: var(--spacing-3xl);
         }
         
-        .logo {
+        .header-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+        
+        .logo-wrapper {
+            position: relative;
+            display: inline-block;
+            animation: fadeInDown 0.6s var(--ease-out);
+        }
+        
+        .logo-image {
+            width: 80px;
+            height: 80px;
+            border-radius: var(--radius-xl);
+            object-fit: cover;
+            border: 2px solid var(--border-strong);
+            box-shadow: var(--shadow-lg);
+            transition: all var(--transition-slow) var(--ease-out);
+            cursor: pointer;
+        }
+        
+        .logo-image:hover {
+            transform: translateY(-4px) scale(1.05) rotate(2deg);
+            box-shadow: var(--shadow-lg), var(--shadow-glow);
+            border-color: var(--accent-border);
+        }
+        
+        .logo-text {
             display: inline-block;
             font-size: var(--text-3xl);
             font-weight: 700;
@@ -144,8 +225,8 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            margin-bottom: var(--spacing-md);
-            animation: fadeInDown 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            margin-bottom: var(--spacing-sm);
+            animation: fadeInDown 0.6s var(--ease-out) 0.1s backwards;
         }
         
         .subtitle {
@@ -153,7 +234,232 @@
             color: var(--text-secondary);
             font-weight: 400;
             letter-spacing: 0.02em;
-            animation: fadeInDown 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s backwards;
+            animation: fadeInDown 0.6s var(--ease-out) 0.2s backwards;
+        }
+        
+        /* ===== 主题切换按钮 ===== */
+        .theme-toggle {
+            position: fixed;
+            top: var(--spacing-lg);
+            right: var(--spacing-lg);
+            width: 48px;
+            height: 48px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 200;
+            transition: all var(--transition-base) var(--ease-out);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .theme-toggle:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-strong);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .theme-toggle:active {
+            transform: translateY(0) scale(0.95);
+        }
+        
+        .theme-icon {
+            font-size: 20px;
+            transition: transform var(--transition-base) var(--ease-out);
+        }
+        
+        .theme-toggle:hover .theme-icon {
+            transform: rotate(20deg);
+        }
+        
+        /* ===== 使用说明按钮 ===== */
+        .help-button {
+            position: fixed;
+            bottom: var(--spacing-lg);
+            right: var(--spacing-lg);
+            width: 56px;
+            height: 56px;
+            background: var(--accent-primary);
+            border: none;
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 200;
+            transition: all var(--transition-base) var(--ease-out);
+            box-shadow: var(--shadow-lg), var(--shadow-glow);
+            color: white;
+            font-size: 24px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .help-button:hover {
+            background: var(--accent-hover);
+            transform: translateY(-4px) scale(1.1);
+            box-shadow: var(--shadow-lg), 0 0 30px var(--accent-primary);
+        }
+        
+        .help-button:active {
+            transform: translateY(-2px) scale(1.05);
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: var(--shadow-lg), 0 0 20px var(--accent-primary);
+            }
+            50% {
+                box-shadow: var(--shadow-lg), 0 0 40px var(--accent-primary);
+            }
+        }
+        
+        /* ===== 使用说明模态框 ===== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-slow) var(--ease-out);
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .modal {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-xl);
+            max-width: 640px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            transform: scale(0.9) translateY(20px);
+            transition: transform var(--transition-slow) var(--ease-out);
+        }
+        
+        .modal-overlay.active .modal {
+            transform: scale(1) translateY(0);
+        }
+        
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-xl);
+            border-bottom: 1px solid var(--border-subtle);
+            position: sticky;
+            top: 0;
+            background: var(--bg-elevated);
+            z-index: 1;
+        }
+        
+        .modal-title {
+            font-size: var(--text-xl);
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-hover);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all var(--transition-base) var(--ease-out);
+            color: var(--text-secondary);
+            font-size: 20px;
+        }
+        
+        .modal-close:hover {
+            background: var(--bg-surface);
+            border-color: var(--border-strong);
+            color: var(--text-primary);
+            transform: rotate(90deg);
+        }
+        
+        .modal-body {
+            padding: var(--spacing-xl);
+        }
+        
+        .help-section {
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .help-section:last-child {
+            margin-bottom: 0;
+        }
+        
+        .help-section-title {
+            font-size: var(--text-lg);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .help-section-content {
+            color: var(--text-secondary);
+            font-size: var(--text-base);
+            line-height: 1.7;
+        }
+        
+        .help-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .help-list-item {
+            padding: var(--spacing-sm) 0;
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-sm);
+        }
+        
+        .help-list-item::before {
+            content: '•';
+            color: var(--accent-primary);
+            font-weight: bold;
+            font-size: var(--text-lg);
+        }
+        
+        .help-code {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-family: var(--font-mono);
+            font-size: var(--text-sm);
+            color: var(--accent-primary);
+            display: inline-block;
+            margin: var(--spacing-xs) 0;
+        }
+        
+        .help-highlight {
+            color: var(--accent-primary);
+            font-weight: 600;
         }
         
         /* ===== 搜索栏 ===== */
@@ -161,7 +467,7 @@
             position: relative;
             max-width: 600px;
             margin: var(--spacing-2xl) auto var(--spacing-3xl);
-            animation: fadeInDown 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s backwards;
+            animation: fadeInDown 0.6s var(--ease-out) 0.3s backwards;
         }
         
         .search-input {
@@ -175,7 +481,7 @@
             font-size: var(--text-base);
             font-family: var(--font-sans);
             outline: none;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all var(--transition-slow) var(--ease-out);
         }
         
         .search-input::placeholder {
@@ -196,7 +502,7 @@
             transform: translateY(-50%);
             color: var(--text-tertiary);
             pointer-events: none;
-            transition: color 0.3s ease;
+            transition: color var(--transition-base) ease;
         }
         
         .search-input:focus + .search-icon {
@@ -210,7 +516,7 @@
             justify-content: center;
             flex-wrap: wrap;
             margin-bottom: var(--spacing-2xl);
-            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.3s backwards;
+            animation: fadeInUp 0.6s var(--ease-out) 0.4s backwards;
         }
         
         .filter-tab {
@@ -222,7 +528,7 @@
             font-size: var(--text-sm);
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all var(--transition-base) var(--ease-out);
             user-select: none;
         }
         
@@ -237,6 +543,35 @@
             background: var(--accent-subtle);
             border-color: var(--accent-border);
             color: var(--accent-primary);
+        }
+        
+        /* ===== 统计信息 ===== */
+        .stats-bar {
+            display: flex;
+            gap: var(--spacing-lg);
+            justify-content: center;
+            margin-bottom: var(--spacing-2xl);
+            flex-wrap: wrap;
+            animation: fadeInUp 0.6s var(--ease-out) 0.5s backwards;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+        
+        .stat-value {
+            font-size: var(--text-2xl);
+            font-weight: 700;
+            color: var(--accent-primary);
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .stat-label {
+            font-size: var(--text-sm);
+            color: var(--text-tertiary);
         }
         
         /* ===== 卡片网格 ===== */
@@ -254,13 +589,12 @@
             border: 1px solid var(--border-default);
             border-radius: var(--radius-lg);
             padding: var(--spacing-lg);
-            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all var(--transition-slow) var(--ease-out);
             cursor: pointer;
             overflow: hidden;
-            animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+            animation: fadeInUp 0.5s var(--ease-out) backwards;
         }
         
-        /* 错开动画延迟 */
         .service-card:nth-child(1) { animation-delay: 0.1s; }
         .service-card:nth-child(2) { animation-delay: 0.15s; }
         .service-card:nth-child(3) { animation-delay: 0.2s; }
@@ -269,7 +603,6 @@
         .service-card:nth-child(6) { animation-delay: 0.35s; }
         .service-card:nth-child(n+7) { animation-delay: 0.4s; }
         
-        /* 卡片装饰 - 顶部细线 */
         .service-card::before {
             content: '';
             position: absolute;
@@ -279,7 +612,7 @@
             height: 2px;
             background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
             opacity: 0;
-            transition: opacity 0.35s ease;
+            transition: opacity var(--transition-slow) ease;
         }
         
         .service-card:hover {
@@ -310,7 +643,7 @@
             align-items: center;
             justify-content: center;
             font-size: 20px;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all var(--transition-slow) var(--ease-out);
         }
         
         .service-card:hover .card-icon {
@@ -336,7 +669,7 @@
             margin-bottom: var(--spacing-sm);
             border: 1px solid var(--border-subtle);
             display: inline-block;
-            transition: all 0.25s ease;
+            transition: all var(--transition-base) ease;
         }
         
         .service-card:hover .card-path {
@@ -387,12 +720,20 @@
             opacity: 0;
             z-index: 1000;
             pointer-events: none;
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all 0.4s var(--ease-out);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
         }
         
         .copy-toast.show {
             transform: translateX(-50%) translateY(0);
             opacity: 1;
+        }
+        
+        .toast-icon {
+            color: var(--success);
+            font-size: 18px;
         }
         
         /* ===== 空状态 ===== */
@@ -409,7 +750,7 @@
             opacity: 0.5;
         }
         
-        /* ===== 页脚（极简） ===== */
+        /* ===== 页脚 ===== */
         footer {
             text-align: center;
             padding: var(--spacing-2xl) var(--spacing-lg);
@@ -421,7 +762,7 @@
         footer a {
             color: var(--text-secondary);
             text-decoration: none;
-            transition: color 0.25s ease;
+            transition: color var(--transition-base) ease;
         }
         
         footer a:hover {
@@ -468,61 +809,336 @@
                 margin-bottom: var(--spacing-xl);
             }
             
+            .logo-image {
+                width: 64px;
+                height: 64px;
+            }
+            
             .cards-grid {
                 grid-template-columns: 1fr;
                 gap: var(--spacing-md);
             }
-            
+          
             .search-wrapper {
                 margin: var(--spacing-xl) auto var(--spacing-2xl);
             }
-            
+          
             .filter-tabs {
                 margin-bottom: var(--spacing-xl);
             }
+          
+            .theme-toggle {
+                top: var(--spacing-md);
+                right: var(--spacing-md);
+                width: 44px;
+                height: 44px;
+            }
+          
+            .help-button {
+                bottom: var(--spacing-md);
+                right: var(--spacing-md);
+                width: 52px;
+                height: 52px;
+            }
+          
+            .modal {
+                width: 95%;
+                max-height: 85vh;
+            }
+          
+            .modal-header,
+            .modal-body {
+                padding: var(--spacing-lg);
+            }
+          
+            .stats-bar {
+                gap: var(--spacing-md);
+            }
+          
+            .stat-value {
+                font-size: var(--text-xl);
+            }
         }
-        
+      
         /* ===== 滚动条样式 ===== */
         ::-webkit-scrollbar {
             width: 10px;
         }
-        
+      
         ::-webkit-scrollbar-track {
             background: var(--bg-primary);
         }
-        
+      
         ::-webkit-scrollbar-thumb {
             background: var(--bg-elevated);
             border-radius: 5px;
             border: 2px solid var(--bg-primary);
         }
-        
+      
         ::-webkit-scrollbar-thumb:hover {
             background: var(--bg-hover);
+        }
+      
+        /* ===== 模态框滚动条 ===== */
+        .modal::-webkit-scrollbar {
+            width: 8px;
+        }
+      
+        .modal::-webkit-scrollbar-track {
+            background: var(--bg-elevated);
+        }
+      
+        .modal::-webkit-scrollbar-thumb {
+            background: var(--bg-hover);
+            border-radius: 4px;
+        }
+      
+        /* ===== 选择文本样式 ===== */
+        ::selection {
+            background: var(--accent-subtle);
+            color: var(--accent-primary);
+        }
+      
+        ::-moz-selection {
+            background: var(--accent-subtle);
+            color: var(--accent-primary);
+        }
+      
+        /* ===== 焦点可见性 ===== */
+        :focus-visible {
+            outline: 2px solid var(--accent-primary);
+            outline-offset: 2px;
+        }
+      
+        /* ===== 减少动画（尊重用户偏好） ===== */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
         }
     </style>
 </head>
 <body>
     <!-- 网格装饰背景 -->
     <div class="bg-grid"></div>
-    
+  
     <!-- 顶部光带 -->
     <div class="top-glow"></div>
-    
+  
+    <!-- 主题切换按钮 -->
+    <button class="theme-toggle" id="themeToggle" aria-label="切换主题">
+        <span class="theme-icon">🌙</span>
+    </button>
+  
+    <!-- 使用说明按钮 -->
+    <button class="help-button" id="helpButton" aria-label="使用说明">
+        ?
+    </button>
+  
+    <!-- 使用说明模态框 -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <span>📖</span>
+                    使用说明
+                </h2>
+                <button class="modal-close" id="modalClose" aria-label="关闭">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="help-section">
+                    <h3 class="help-section-title">
+                        <span>🚀</span>
+                        什么是 V Proxy？
+                    </h3>
+                    <div class="help-section-content">
+                        V Proxy 是基于 Netlify Edge Functions 构建的高性能边缘代理服务，为您提供快速、稳定的全球资源访问能力。支持 <span class="help-highlight">40+</span> 主流 AI API 和常用网站代理。
+                    </div>
+                </div>
+              
+                <div class="help-section">
+                    <h3 class="help-section-title">
+                        <span>💡</span>
+                        如何使用？
+                    </h3>
+                    <div class="help-section-content">
+                        <ul class="help-list">
+                            <li class="help-list-item">
+                                <span><strong>点击复制：</strong>点击任意服务卡片，自动复制完整代理 URL 到剪贴板</span>
+                            </li>
+                            <li class="help-list-item">
+                                <span><strong>实时搜索：</strong>在搜索框输入关键词，即时筛选匹配的服务</span>
+                            </li>
+                            <li class="help-list-item">
+                                <span><strong>分类筛选：</strong>点击标签按钮，快速切换 API / 网站分类</span>
+                            </li>
+                            <li class="help-list-item">
+                                <span><strong>主题切换：</strong>点击右上角按钮手动切换，或根据北京时间自动切换</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+              
+                <div class="help-section">
+                    <h3 class="help-section-title">
+                        <span>⌨️</span>
+                        键盘快捷键
+                    </h3>
+                    <div class="help-section-content">
+                        <ul class="help-list">
+                            <li class="help-list-item">
+                                <span><span class="help-code">Cmd/Ctrl + K</span> - 快速聚焦搜索框</span>
+                            </li>
+                            <li class="help-list-item">
+                                <span><span class="help-code">Esc</span> - 清空搜索内容或关闭模态框</span>
+                            </li>
+                            <li class="help-list-item">
+                                <span><span class="help-code">?</span> - 打开/关闭使用说明</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+              
+                <div class="help-section">
+                    <h3 class="help-section-title">
+                        <span>🔗</span>
+                        代理规则示例
+                    </h3>
+                    <div class="help-section-content">
+                        <p style="margin-bottom: var(--spacing-sm);">复制的 URL 可直接替换原始 API 地址使用：</p>
+                        <div class="help-code" style="display: block; margin: var(--spacing-sm) 0;">
+                            https://v-proxy.netlify.app/openai/v1/chat/completions
+                        </div>
+                        <p style="margin-top: var(--spacing-md); color: var(--text-tertiary); font-size: var(--text-sm);">
+                            ↑ 代理到 api.openai.com/v1/chat/completions
+                        </p>
+                    </div>
+                </div>
+              
+                <div class="help-section">
+                    <h3 class="help-section-title">
+                        <span>🌓</span>
+                        智能主题模式
+                    </h3>
+                    <div class="help-section-content">
+                        <ul class="help-list">
+                            <li class="help-list-item">
+                                <span><strong>自动切换：</strong>北京时间 18:00-次日 6:00 自动启用深色模式</span>
+                            </li>
+                            <li class="help-list-item">
+                                <span><strong>手动控制：</strong>点击右上角按钮可随时手动切换主题</span>
+                            </li>
+                            <li class="help-list-item">
+                                <span><strong>记忆功能：</strong>您的主题偏好会自动保存到本地</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+              
+                <div class="help-section">
+                    <h3 class="help-section-title">
+                        <span>⚡</span>
+                        性能特性
+                    </h3>
+                    <div class="help-section-content">
+                        <ul class="help-list">
+                            <li class="help-list-item">
+                                <span><strong>边缘计算：</strong>Netlify CDN 全球节点，就近访问，超低延迟</span>
+                            </li>
+                            <li class="help-list-item">
+                                <span><strong>智能缓存：</strong>静态资源自动缓存，动态内容实时转发</span>
+                            </li>
+                            <li class="help-list-item">
+                                <span><strong>请求优化：</strong>保留原始请求头，支持所有 HTTP 方法</span>
+                            </li>
+                            <li class="help-list-item">
+                                <span><strong>CORS 支持：</strong>跨域请求自动处理，开箱即用</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+              
+                <div class="help-section">
+                    <h3 class="help-section-title">
+                        <span>🛡️</span>
+                        隐私与安全
+                    </h3>
+                    <div class="help-section-content">
+                        <ul class="help-list">
+                            <li class="help-list-item">
+                                <span>所有代理请求均通过加密通道传输（HTTPS）</span>
+                            </li>
+                            <li class="help-list-item">
+                                <span>不记录、不存储任何用户请求内容</span>
+                            </li>
+                            <li class="help-list-item">
+                                <span>保留原始请求头信息，确保 API 功能完整</span>
+                            </li>
+                            <li class="help-list-item">
+                                <span>开源透明，代码可在 GitHub 审查</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+              
+                <div class="help-section">
+                    <h3 class="help-section-title">
+                        <span>📧</span>
+                        技术支持
+                    </h3>
+                    <div class="help-section-content">
+                        <p>遇到问题或有建议？</p>
+                        <p style="margin-top: var(--spacing-sm);">
+                            访问 <a href="https://github.com" target="_blank" rel="noopener" style="color: var(--accent-primary); text-decoration: underline;">GitHub 仓库</a> 提交 Issue
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+  
     <div class="container">
         <!-- 头部 -->
         <header>
-            <h1 class="logo">V Proxy</h1>
-            <p class="subtitle">高性能边缘代理服务 · 即时访问全球资源</p>
+            <div class="header-content">
+                <div class="logo-wrapper">
+                    <img src="https://tc-new.z.wiki/autoupload/f/f2pEzaiCVbr1cM3PJA99eFFgdAxwoXwxkzwo0m5dx3-yl5f0KlZfm6UsKj-HyTuv/20250807/ngkG/1080X2376/%E5%88%9D%E9%9F%B3%E6%9C%AA%E6%9D%A5.jpg" 
+                         alt="V Proxy Logo" 
+                         class="logo-image"
+                         loading="lazy">
+                </div>
+                <h1 class="logo-text">V Proxy</h1>
+                <p class="subtitle">高性能边缘代理服务 · 即时访问全球资源</p>
+            </div>
         </header>
-        
+      
+        <!-- 统计信息 -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-value" id="totalServices">0</div>
+                <div class="stat-label">总服务数</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="apiServices">0</div>
+                <div class="stat-label">API 服务</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="websiteServices">0</div>
+                <div class="stat-label">网站代理</div>
+            </div>
+        </div>
+      
         <!-- 搜索栏 -->
         <div class="search-wrapper">
             <input 
                 type="text" 
                 class="search-input" 
                 id="searchInput" 
-                placeholder="搜索服务名称或路径..."
+                placeholder="搜索服务名称、路径或目标地址..."
                 autocomplete="off"
             >
             <svg class="search-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -530,32 +1146,34 @@
                 <path d="M12.5 12.5L16.5 16.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
             </svg>
         </div>
-        
+      
         <!-- 标签筛选 -->
         <div class="filter-tabs">
             <div class="filter-tab active" data-filter="all">全部</div>
-            <div class="filter-tab" data-filter="api">API</div>
-            <div class="filter-tab" data-filter="website">网站</div>
+            <div class="filter-tab" data-filter="api">API 服务</div>
+            <div class="filter-tab" data-filter="website">网站代理</div>
         </div>
-        
+      
         <!-- 服务卡片网格 -->
         <div class="cards-grid" id="cardsGrid"></div>
-        
+      
         <!-- 空状态 -->
         <div class="empty-state" id="emptyState" style="display: none;">
             <div class="empty-icon">🔍</div>
             <div>未找到匹配的服务</div>
         </div>
     </div>
-    
+  
     <!-- 复制提示 -->
     <div class="copy-toast" id="copyToast">
-        ✓ 已复制到剪贴板
+        <span class="toast-icon">✓</span>
+        <span>已复制到剪贴板</span>
     </div>
-    
+  
     <!-- 页脚 -->
     <footer>
-        <p>由 <a href="https://netlify.com" target="_blank" rel="noopener">Netlify Edge Functions</a> 提供支持</p>
+        <p>由 <a href="https://netlify.com" target="_blank" rel="noopener">Netlify Edge Functions</a> 提供支持 · 
+        <a href="javascript:void(0)" id="footerHelp">使用说明</a></p>
     </footer>
 
     <script>
@@ -599,7 +1217,7 @@
             { name: 'MNN', path: '/mnn', target: 'api.mnnai.ru', type: 'api', icon: '🇷🇺' },
             { name: 'Navy', path: '/navy', target: 'api.navy', type: 'api', icon: '⚓' },
             { name: 'Void', path: '/void', target: 'api.voidai.app', type: 'api', icon: '🌌' },
-            
+          
             // 网站服务
             { name: 'Hanime', path: '/hanime', target: 'hanime1.me', type: 'website', icon: '🎬' },
             { name: 'X', path: '/x', target: 'hx.com', type: 'website', icon: '🐦' },
@@ -609,57 +1227,171 @@
             { name: 'Pixiv', path: '/pixiv', target: 'pixiv.net', type: 'website', icon: '🎨' },
             { name: 'YouTube', path: '/youtube', target: 'youtube.com', type: 'website', icon: '📺' }
         ];
-        
+      
         const BASE_URL = 'https://v-proxy.netlify.app';
-        
+      
         // ===== DOM 元素 =====
         const cardsGrid = document.getElementById('cardsGrid');
         const emptyState = document.getElementById('emptyState');
         const searchInput = document.getElementById('searchInput');
         const filterTabs = document.querySelectorAll('.filter-tab');
         const copyToast = document.getElementById('copyToast');
-        
+        const themeToggle = document.getElementById('themeToggle');
+        const helpButton = document.getElementById('helpButton');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalClose = document.getElementById('modalClose');
+        const footerHelp = document.getElementById('footerHelp');
+      
+        // 统计元素
+        const totalServicesEl = document.getElementById('totalServices');
+        const apiServicesEl = document.getElementById('apiServices');
+        const websiteServicesEl = document.getElementById('websiteServices');
+      
         // ===== 当前筛选状态 =====
         let currentFilter = 'all';
         let currentSearch = '';
-        
+      
+        // ===== 主题管理 =====
+        const THEME_KEY = 'v-proxy-theme';
+        const THEME_OVERRIDE_KEY = 'v-proxy-theme-override';
+      
+        // 获取北京时间小时
+        function getBeijingHour() {
+            const now = new Date();
+            const utcHour = now.getUTCHours();
+            const beijingHour = (utcHour + 8) % 24;
+            return beijingHour;
+        }
+      
+        // 判断是否应该使用深色模式
+        function shouldUseDarkMode() {
+            const hour = getBeijingHour();
+            // 18:00 到次日 6:00 使用深色模式
+            return hour >= 18 || hour < 6;
+        }
+      
+        // 应用主题
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            const icon = themeToggle.querySelector('.theme-icon');
+            icon.textContent = theme === 'dark' ? '🌙' : '☀️';
+            localStorage.setItem(THEME_KEY, theme);
+        }
+      
+        // 初始化主题
+        function initTheme() {
+            const override = localStorage.getItem(THEME_OVERRIDE_KEY);
+            const savedTheme = localStorage.getItem(THEME_KEY);
+          
+            if (override === 'true' && savedTheme) {
+                // 用户手动设置过主题
+                applyTheme(savedTheme);
+            } else {
+                // 根据时间自动切换
+                const autoTheme = shouldUseDarkMode() ? 'dark' : 'light';
+                applyTheme(autoTheme);
+                localStorage.removeItem(THEME_OVERRIDE_KEY);
+            }
+        }
+      
+        // 切换主题
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+            localStorage.setItem(THEME_OVERRIDE_KEY, 'true');
+        }
+      
+        themeToggle.addEventListener('click', toggleTheme);
+      
+        // 每小时检查一次主题（如果没有手动覆盖）
+        setInterval(() => {
+            const override = localStorage.getItem(THEME_OVERRIDE_KEY);
+            if (override !== 'true') {
+                initTheme();
+            }
+        }, 3600000); // 1小时
+      
+        // ===== 模态框管理 =====
+        function openModal() {
+            modalOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+      
+        function closeModal() {
+            modalOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+      
+        helpButton.addEventListener('click', openModal);
+        modalClose.addEventListener('click', closeModal);
+        footerHelp.addEventListener('click', openModal);
+      
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                closeModal();
+            }
+        });
+      
+        // ===== 数字滚动动画 =====
+        function animateCount(element, target, duration = 1000) {
+            const start = 0;
+            const increment = target / (duration / 16);
+            let current = start;
+          
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {
+                    element.textContent = target;
+                    clearInterval(timer);
+                } else {
+                    element.textContent = Math.floor(current);
+                }
+            }, 16);
+        }
+      
+        // 更新统计数据
+        function updateStats() {
+            const apiCount = SERVICES.filter(s => s.type === 'api').length;
+            const websiteCount = SERVICES.filter(s => s.type === 'website').length;
+            const totalCount = SERVICES.length;
+          
+            animateCount(totalServicesEl, totalCount, 800);
+            animateCount(apiServicesEl, apiCount, 900);
+            animateCount(websiteServicesEl, websiteCount, 1000);
+        }
+      
         // ===== 渲染服务卡片 =====
         function renderCards() {
             const filteredServices = SERVICES.filter(service => {
-                // 类型筛选
                 const matchesFilter = currentFilter === 'all' || service.type === currentFilter;
-                
-                // 搜索筛选
                 const searchTerm = currentSearch.toLowerCase();
                 const matchesSearch = !searchTerm || 
                     service.name.toLowerCase().includes(searchTerm) ||
                     service.path.toLowerCase().includes(searchTerm) ||
                     service.target.toLowerCase().includes(searchTerm);
-                
+              
                 return matchesFilter && matchesSearch;
             });
-            
-            // 清空网格
+          
             cardsGrid.innerHTML = '';
-            
-            // 显示空状态或卡片
+          
             if (filteredServices.length === 0) {
                 emptyState.style.display = 'block';
                 cardsGrid.style.display = 'none';
             } else {
                 emptyState.style.display = 'none';
                 cardsGrid.style.display = 'grid';
-                
-                // 渲染卡片
+              
                 filteredServices.forEach((service, index) => {
                     const card = document.createElement('div');
                     card.className = 'service-card';
                     card.style.animationDelay = `${0.1 + index * 0.05}s`;
-                    
+                  
                     const fullUrl = BASE_URL + service.path;
                     const tagLabel = service.type === 'api' ? 'API' : '网站';
                     const tagClass = service.type === 'api' ? 'api' : '';
-                    
+                  
                     card.innerHTML = `
                         <div class="card-header">
                             <div class="card-icon">${service.icon}</div>
@@ -669,33 +1401,29 @@
                         <div class="card-target">→ ${service.target}</div>
                         <span class="card-tag ${tagClass}">${tagLabel}</span>
                     `;
-                    
-                    // 点击复制完整 URL
+                  
                     card.addEventListener('click', () => {
                         copyToClipboard(fullUrl);
                     });
-                    
+                  
                     cardsGrid.appendChild(card);
                 });
             }
         }
-        
+      
         // ===== 复制到剪贴板 =====
         function copyToClipboard(text) {
-            // 使用现代 Clipboard API
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(() => {
                     showCopyToast();
-                }).catch(err => {
-                    // 降级方案
+                }).catch(err =>{
                     fallbackCopy(text);
                 });
             } else {
-                // 降级方案
                 fallbackCopy(text);
             }
         }
-        
+      
         // ===== 降级复制方案 =====
         function fallbackCopy(text) {
             const textArea = document.createElement('textarea');
@@ -706,75 +1434,27 @@
             document.body.appendChild(textArea);
             textArea.focus();
             textArea.select();
-            
+          
             try {
                 document.execCommand('copy');
                 showCopyToast();
             } catch (err) {
                 console.error('复制失败:', err);
             }
-            
+          
             document.body.removeChild(textArea);
         }
-        
+      
         // ===== 显示复制提示 =====
         function showCopyToast() {
             copyToast.classList.add('show');
-            
-            // 2 秒后隐藏
+          
             setTimeout(() => {
                 copyToast.classList.remove('show');
             }, 2000);
         }
-        
-        // ===== 搜索功能 =====
-        searchInput.addEventListener('input', (e) => {
-            currentSearch = e.target.value.trim();
-            renderCards();
-        });
-        
-        // ===== 标签筛选 =====
-        filterTabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                // 移除所有 active 状态
-                filterTabs.forEach(t => t.classList.remove('active'));
-                
-                // 添加当前 active 状态
-                tab.classList.add('active');
-                
-                // 更新筛选器
-                currentFilter = tab.dataset.filter;
-                
-                // 重新渲染
-                renderCards();
-            });
-        });
-        
-        // ===== 键盘快捷键：Escape 清空搜索 =====
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && searchInput.value) {
-                searchInput.value = '';
-                currentSearch = '';
-                renderCards();
-                searchInput.blur();
-            }
-            
-            // Cmd/Ctrl + K 聚焦搜索框
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-                e.preventDefault();
-                searchInput.focus();
-            }
-        });
-        
-        // ===== 初始化渲染 =====
-        renderCards();
-        
-        // ===== 页面加载动画优化 =====
-        window.addEventListener('load', () => {
-            document.body.style.opacity = '1';
-        });
-        
-        // ===== 性能优化：防抖搜索 =====
+      
+        // ===== 搜索功能（防抖） =====
         let searchTimeout;
         searchInput.addEventListener('input', (e) => {
             clearTimeout(searchTimeout);
@@ -783,27 +1463,68 @@
                 renderCards();
             }, 200);
         });
-        
-        // ===== 平滑滚动到顶部（点击 Logo） =====
-        document.querySelector('.logo').addEventListener('click', () => {
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
+      
+        // ===== 标签筛选 =====
+        filterTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                filterTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentFilter = tab.dataset.filter;
+                renderCards();
             });
         });
-        
-        // ===== 视差效果：鼠标移动光晕追踪（可选） =====
+      
+        // ===== 键盘快捷键 =====
+        document.addEventListener('keydown', (e) => {
+            // Esc - 清空搜索或关闭模态框
+            if (e.key === 'Escape') {
+                if (modalOverlay.classList.contains('active')) {
+                    closeModal();
+                } else if (searchInput.value) {
+                    searchInput.value = '';
+                    currentSearch = '';
+                    renderCards();
+                    searchInput.blur();
+                }
+            }
+          
+            // Cmd/Ctrl + K - 聚焦搜索框
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                searchInput.focus();
+            }
+          
+            // ? - 打开使用说明
+            if (e.key === '?' && !searchInput.matches(':focus')) {
+                e.preventDefault();
+                if (modalOverlay.classList.contains('active')) {
+                    closeModal();
+                } else {
+                    openModal();
+                }
+            }
+        });
+      
+        // ===== Logo 点击滚动到顶部 =====
+        const logoImage = document.querySelector('.logo-image');
+        const logoText = document.querySelector('.logo-text');
+      
+        [logoImage, logoText].forEach(el => {
+            el.addEventListener('click', () => {
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+            });
+            el.style.cursor = 'pointer';
+        });
+      
+        // ===== 鼠标光晕追踪效果 =====
         let mouseX = 0;
         let mouseY = 0;
         let currentX = 0;
         let currentY = 0;
-        
-        document.addEventListener('mousemove', (e) => {
-            mouseX = e.clientX;
-            mouseY = e.clientY;
-        });
-        
-        // 创建光晕元素
+      
         const cursorGlow = document.createElement('div');
         cursorGlow.style.cssText = `
             position: fixed;
@@ -817,79 +1538,415 @@
             opacity: 0;
         `;
         document.body.appendChild(cursorGlow);
-        
-        // 延迟追踪动画
+      
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+      
         function animateGlow() {
             const dx = mouseX - currentX;
             const dy = mouseY - currentY;
-            
+          
             currentX += dx * 0.1;
             currentY += dy * 0.1;
-            
+          
             cursorGlow.style.left = (currentX - 200) + 'px';
             cursorGlow.style.top = (currentY - 200) + 'px';
-            
+          
             requestAnimationFrame(animateGlow);
         }
-        
+      
         animateGlow();
-        
-        // 鼠标进入页面显示光晕
+      
         document.addEventListener('mouseenter', () => {
-            cursorGlow.style.opacity = '1';
+            if (!('ontouchstart' in window)) {
+                cursorGlow.style.opacity = '1';
+            }
         });
-        
+      
         document.addEventListener('mouseleave', () => {
             cursorGlow.style.opacity = '0';
         });
-        
-        // ===== 统计信息实时更新（数字滚动动画） =====
-        function animateCount(element, target, duration = 1000) {
-            const start = 0;
-            const increment = target / (duration / 16);
-            let current = start;
-            
-            const timer = setInterval(() => {
-                current += increment;
-                if (current >= target) {
-                    element.textContent = target;
-                    clearInterval(timer);
-                } else {
-                    element.textContent = Math.floor(current);
-                }
-            }, 16);
-        }
-        
-        // ===== 响应式：移动端触摸优化 =====
+      
+        // ===== 移动端优化 =====
         if ('ontouchstart' in window) {
-            // 移动端禁用光晕效果
             cursorGlow.style.display = 'none';
-            
-            // 优化卡片点击区域
-            document.querySelectorAll('.service-card').forEach(card => {
-                card.style.minHeight = '44px'; // iOS 推荐最小触摸区域
-            });
         }
-        
-        // ===== 页面可见性 API：标签页切换优化 =====
+      
+        // ===== 页面可见性 API =====
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
-                // 页面隐藏时暂停动画
                 cursorGlow.style.display = 'none';
             } else {
-                // 页面显示时恢复动画
                 if (!('ontouchstart' in window)) {
                     cursorGlow.style.display = 'block';
                 }
             }
         });
-        
-        // ===== 控制台彩蛋 =====
-        console.log('%c🚀 V Proxy', 'font-size: 24px; font-weight: bold; color: #6366f1;');
-        console.log('%c高性能边缘代理服务', 'font-size: 14px; color: #888;');
-        console.log('%c由 Netlify Edge Functions 驱动', 'font-size: 12px; color: #666; font-style: italic;');
-        console.log('%c\n💡 提示：点击任意卡片即可复制完整 URL', 'font-size: 12px; color: #10b981;');
-        console.log('%c⌨️  快捷键：Cmd/Ctrl + K 聚焦搜索', 'font-size: 12px; color: #f59e0b;');
+      
+        // ===== 平滑滚动增强 =====
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+      
+        // ===== 图片懒加载错误处理 =====
+        const logoImg = document.querySelector('.logo-image');
+        logoImg.addEventListener('error', function() {
+            // 加载失败时显示默认图标
+            this.style.display = 'none';
+            const fallback = document.createElement('div');
+            fallback.style.cssText = `
+                width: 80px;
+                height: 80px;
+                border-radius: var(--radius-xl);
+                background: var(--accent-subtle);
+                border: 2px solid var(--accent-border);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 40px;
+            `;
+            fallback.textContent = '🚀';
+            this.parentNode.insertBefore(fallback, this);
+        });
+      
+        // ===== 性能监控（开发环境） =====
+        if (window.performance && window.performance.timing) {
+            window.addEventListener('load', () => {
+                setTimeout(() => {
+                    const perfData = window.performance.timing;
+                    const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
+                    console.log(`%c⚡ 页面加载完成`, 'color: #10b981; font-weight: bold');
+                    console.log(`%c   加载时间: ${pageLoadTime}ms`, 'color: #6b7280');
+                }, 0);
+            });
+        }
+      
+        // ===== 初始化 =====
+        function init() {
+            // 初始化主题
+            initTheme();
+          
+            // 渲染卡片
+            renderCards();
+          
+            // 更新统计
+            updateStats();
+          
+            // 控制台信息
+            console.log('%c🚀 V Proxy', 'font-size: 24px; font-weight: bold; color: #6366f1;');
+            console.log('%c高性能边缘代理服务', 'font-size: 14px; color: #888;');
+            console.log('%c由 Netlify Edge Functions 驱动', 'font-size: 12px; color: #666; font-style: italic;');
+            console.log('%c\n💡 提示：点击任意卡片即可复制完整 URL', 'font-size: 12px; color: #10b981;');
+            console.log('%c⌨️  快捷键：', 'font-size: 12px; color: #f59e0b;');
+            console.log('%c   • Cmd/Ctrl + K - 聚焦搜索', 'font-size: 11px; color: #999;');
+            console.log('%c   • Esc - 清空搜索/关闭弹窗', 'font-size: 11px; color: #999;');
+            console.log('%c   • ? - 打开使用说明', 'font-size: 11px; color: #999;');
+        }
+      
+        // 页面加载完成后初始化
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+      
+        // ===== 服务状态检测（可选功能） =====
+        // 注：由于 CORS 限制，实际部署时需要后端支持
+        async function checkServiceStatus(service) {
+            try {
+                const response = await fetch(`${BASE_URL}${service.path}`, {
+                    method: 'HEAD',
+                    mode: 'no-cors'
+                });
+                return true;
+            } catch (error) {
+                return false;
+            }
+        }
+      
+        // ===== 网络状态监听 =====
+        window.addEventListener('online', () => {
+            console.log('%c✓ 网络已连接', 'color: #10b981;');
+        });
+      
+        window.addEventListener('offline', () => {
+            console.log('%c✗ 网络已断开', 'color: #ef4444;');
+            showOfflineNotice();
+        });
+      
+        function showOfflineNotice() {
+            const notice = document.createElement('div');
+            notice.style.cssText = `
+                position: fixed;
+                top: var(--spacing-lg);
+                left: 50%;
+                transform: translateX(-50%);
+                background: var(--bg-elevated);
+                color: var(--text-primary);
+                padding: var(--spacing-md) var(--spacing-lg);
+                border-radius: var(--radius-lg);
+                border: 1px solid var(--border-strong);
+                box-shadow: var(--shadow-lg);
+                z-index: 1001;
+                display: flex;
+                align-items: center;
+                gap: var(--spacing-sm);
+                animation: fadeInDown 0.3s ease;
+            `;
+            notice.innerHTML = '<span>⚠️</span><span>网络连接已断开，部分功能可能不可用</span>';
+            document.body.appendChild(notice);
+          
+            setTimeout(() => {
+                notice.style.opacity = '0';
+                setTimeout(() => notice.remove(), 300);
+            }, 3000);
+        }
+      
+        // ===== 复制统计（可选） =====
+        let copyCount = 0;
+        const originalCopy = copyToClipboard;
+        copyToClipboard = function(text) {
+            copyCount++;
+            if (copyCount === 10) {
+                console.log('%c🎉 恭喜！你已复制 10 次，真是个高产的开发者！', 'font-size: 14px; color: #6366f1; font-weight: bold;');
+            }
+            originalCopy(text);
+        };
+      
+        // ===== 主题切换动画增强 =====
+        let themeTransitionTimeout;
+        const originalToggleTheme = toggleTheme;
+        toggleTheme = function() {
+            // 添加过渡类
+            document.body.style.transition = 'none';
+            originalToggleTheme();
+          
+            // 强制重绘
+            void document.body.offsetHeight;
+          
+            // 恢复过渡
+            document.body.style.transition = '';
+        };
+      
+        // ===== 智能预加载（提升性能） =====
+        if ('IntersectionObserver' in window) {
+            const imageObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        if (img.dataset.src) {
+                            img.src = img.dataset.src;
+                            img.removeAttribute('data-src');
+                            imageObserver.unobserve(img);
+                        }
+                    }
+                });
+            }, {
+                rootMargin: '50px'
+            });
+          
+            document.querySelectorAll('img[data-src]').forEach(img => {
+                imageObserver.observe(img);
+            });
+        }
+      
+        // ===== 搜索历史（可选功能） =====
+        const SEARCH_HISTORY_KEY = 'v-proxy-search-history';
+        const MAX_HISTORY = 5;
+      
+        function saveSearchHistory(query) {
+            if (!query.trim()) return;
+          
+            let history = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]');
+            history = history.filter(q => q !== query);
+            history.unshift(query);
+            history = history.slice(0, MAX_HISTORY);
+          
+            localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
+        }
+      
+        searchInput.addEventListener('blur', () => {
+            if (searchInput.value.trim()) {
+                saveSearchHistory(searchInput.value.trim());
+            }
+        });
+      
+        // ===== 自动更新检测（可选） =====
+        if ('serviceWorker' in navigator) {
+            // 注册 Service Worker 实现离线支持（需要单独配置）
+            // navigator.serviceWorker.register('/sw.js');
+        }
+      
+        // ===== 分析埋点（可选） =====
+        function trackEvent(category, action, label) {
+            // 如果接入了 Google Analytics 或其他分析工具
+            if (window.gtag) {
+                window.gtag('event', action, {
+                    'event_category': category,
+                    'event_label': label
+                });
+            }
+          
+            // 控制台日志（开发环境）
+            if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+                console.log(`[分析] ${category} > ${action} > ${label}`);
+            }
+        }
+      
+        // 追踪复制事件
+        const originalShowToast = showCopyToast;
+        showCopyToast = function() {
+            trackEvent('Interaction', 'Copy', 'Service URL');
+            originalShowToast();
+        };
+      
+        // 追踪搜索事件
+        let lastSearch = '';
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            if (query && query !== lastSearch) {
+                trackEvent('Search', 'Query', query);
+                lastSearch = query;
+            }
+        });
+      
+        // 追踪筛选事件
+        filterTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                trackEvent('Filter', 'Click', tab.dataset.filter);
+            });
+        });
+      
+        // ===== Easter Egg：连续点击 Logo =====
+        let logoClickCount = 0;
+        let logoClickTimeout;
+      
+        logoImage.addEventListener('click', () => {
+            logoClickCount++;
+            clearTimeout(logoClickTimeout);
+          
+            if (logoClickCount === 5) {
+                console.log('%c🎉 彩蛋解锁！', 'font-size: 20px; color: #6366f1; font-weight: bold;');
+                console.log('%c你发现了隐藏功能！', 'font-size: 14px; color: #10b981;');
+                console.log('%c提示：尝试按下 Konami Code（↑↑↓↓←→←→BA）', 'font-size: 12px; color: #f59e0b;');
+              
+                // 临时添加彩虹边框
+                logoImage.style.animation = 'rainbow 2s linear infinite';
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes rainbow {
+                        0% { border-color: #ef4444; }
+                        16% { border-color: #f59e0b; }
+                        33% { border-color: #10b981; }
+                        50% { border-color: #3b82f6; }
+                        66% { border-color: #6366f1; }
+                        83% { border-color: #8b5cf6; }
+                        100% { border-color: #ef4444; }
+                    }
+                `;
+                document.head.appendChild(style);
+              
+                setTimeout(() => {
+                    logoImage.style.animation = '';
+                    style.remove();
+                }, 4000);
+              
+                logoClickCount = 0;
+            }
+          
+            logoClickTimeout = setTimeout(() => {
+                logoClickCount = 0;
+            }, 1000);
+        });
+      
+        // ===== Konami Code 彩蛋 =====
+        const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+        let konamiIndex = 0;
+      
+        document.addEventListener('keydown', (e) => {
+            if (e.key === konamiCode[konamiIndex]) {
+                konamiIndex++;
+                if (konamiIndex === konamiCode.length) {
+                    activateKonamiEgg();
+                    konamiIndex = 0;
+                }
+            } else {
+                konamiIndex = 0;
+            }
+        });
+      
+        function activateKonamiEgg() {
+            console.log('%c🎊 Konami Code 激活！', 'font-size: 24px; color: #6366f1; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);');
+          
+            // 创建粒子爆炸效果
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    createParticle();
+                }, i * 20);
+            }
+        }
+      
+        function createParticle() {
+            const particle = document.createElement('div');
+            const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#6366f1', '#8b5cf6'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+          
+            particle.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                width: 10px;
+                height: 10px;
+                background: ${color};
+                border-radius: 50%;
+                pointer-events: none;
+                z-index: 9999;
+            `;
+          
+            document.body.appendChild(particle);
+          
+            const angle = Math.random() * Math.PI * 2;
+            const velocity = 200 + Math.random() * 200;
+            const vx = Math.cos(angle) * velocity;
+            const vy = Math.sin(angle) * velocity;
+          
+            let x = 0, y = 0;
+            let opacity = 1;
+            const gravity = 500;
+            let time = 0;
+          
+            function animate() {
+                time += 0.016;
+                x = vx * time;
+                y = vy * time + 0.5 * gravity * time * time;
+                opacity = Math.max(0, 1 - time * 0.8);
+              
+                particle.style.transform = `translate(${x}px, ${y}px)`;
+                particle.style.opacity = opacity;
+              
+                if (opacity > 0 && y < window.innerHeight) {
+                    requestAnimationFrame(animate);
+                } else {
+                    particle.remove();
+                }
+            }
+          
+            animate();
+        }
+      
+        // ===== 最终初始化确认 =====
+        console.log('%c✓ 所有功能已加载完成', 'color: #10b981; font-weight: bold;');
     </script>
 </body>
 </html>
