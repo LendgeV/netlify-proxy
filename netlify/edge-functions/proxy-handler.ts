@@ -19,9 +19,6 @@ const PROXY_CONFIG = {
   anannas: "api.anannas.ai",
   bonsai: "go.trybons.ai",
   oxen: "hub.oxen.ai",
-  oxen_image: "hub.oxen.ai",
-  dust: "dust.tt",
-  agenta: "cloud.agenta.ai",
   zenmux: "zenmux.ai/api",
   deepinfra: "api.deepinfra.com",
   nvidia: "integrate.api.nvidia.com",
@@ -29,6 +26,7 @@ const PROXY_CONFIG = {
   verse8: "agent8.verse8.io",
   megallm: "ai.megallm.io",
   vapi: "v-api.zeabur.app",
+  free: "v-api.zeabur.app",
   claude_docs: "api.inkeep.com",
   claude_docs_challenge: "api.inkeep.com",
   puter: "api.puter.com",
@@ -45,8 +43,6 @@ const PROXY_CONFIG = {
   void: "api.voidai.app",
 
   // ===== 网站 =====
-  claude_models: "docs.claude.com/en/docs/about-claude/models/overview",
-  openai_models: "platform.openai.com/docs/models",
 } as const;
 
 // 需要修复路径的内容类型
@@ -69,15 +65,15 @@ const JS_CONTENT_TYPES = [
 
 // 特定网站的替换规则
 const SPECIAL_REPLACEMENTS: Record<string, Array<{pattern: RegExp, replacement: Function}>> = {
-  'docs.claude.com': [
+  'hexo-gally.vercel.app': [
     {
       pattern: /(?:src|href|content)=['"](?:\.?\/)?([^"']*\.(css|js|png|jpg|jpeg|gif|svg|webp|ico))["']/gi,
       replacement: (match: string, path: string, ext: string) => {
         if (path.startsWith('http')) return match;
         if (path.startsWith('/')) {
-          return match.replace(`"/${path.slice(1)}`, `"/claude_models/${path.slice(1)}`);
+          return match.replace(`"/${path.slice(1)}`, `"/hexo/${path.slice(1)}`);
         }
-        return match.replace(`"${path}`, `"/claude_models/${path}`);
+        return match.replace(`"${path}`, `"/hexo/${path}`);
       }
     },
     {
@@ -85,45 +81,45 @@ const SPECIAL_REPLACEMENTS: Record<string, Array<{pattern: RegExp, replacement: 
       replacement: (match: string, path: string) => {
         if (path.startsWith('http')) return match;
         if (path.startsWith('/')) {
-          return match.replace(`(/${path.slice(1)}`, `(/claude_models/${path.slice(1)}`);
+          return match.replace(`(/${path.slice(1)}`, `(/hexo/${path.slice(1)}`);
         }
-        return match.replace(`(${path}`, `(/claude_models/${path}`);
+        return match.replace(`(${path}`, `(/hexo/${path}`);
       }
     },
     {
       pattern: /(src|href)=["']((?:\/_next\/)[^"']*)["']/gi,
       replacement: (match: string, attr: string, path: string) => {
-        return `${attr}="/claude_models${path}"`;
+        return `${attr}="/hexo${path}"`;
       }
     },
     {
       pattern: /"(\/_next\/static\/chunks\/[^"]+)"/gi,
       replacement: (match: string, path: string) => {
-        return `"/claude_models${path}"`;
+        return `"/hexo${path}"`;
       }
     },
     {
       pattern: /"(\/api\/[^"]+)"/gi,
       replacement: (match: string, path: string) => {
-        return `"/claude_models${path}"`;
+        return `"/hexo${path}"`;
       }
     },
     {
       pattern: /data-href=["']((?:\/_next\/)[^"']*)["']/gi,
       replacement: (match: string, path: string) => {
-        return `data-href="/claude_models${path}"`;
+        return `data-href="/hexo${path}"`;
       }
     }
   ],
-  'platform.openai.com': [
+  'tv.gally.ddns-ip.net': [
     {
       pattern: /(?:src|href|content)=['"](?:\.?\/)?([^"']*\.(css|js|png|jpg|jpeg|gif|svg|webp|ico))["']/gi,
       replacement: (match: string, path: string, ext: string) => {
         if (path.startsWith('http')) return match;
         if (path.startsWith('/')) {
-          return match.replace(`"/${path.slice(1)}`, `"/openai_models/${path.slice(1)}`);
+          return match.replace(`"/${path.slice(1)}`, `"/tv/${path.slice(1)}`);
         }
-        return match.replace(`"${path}`, `"/openai_models/${path}`);
+        return match.replace(`"${path}`, `"/tv/${path}`);
       }
     },
     {
@@ -131,33 +127,9 @@ const SPECIAL_REPLACEMENTS: Record<string, Array<{pattern: RegExp, replacement: 
       replacement: (match: string, path: string) => {
         if (path.startsWith('http')) return match;
         if (path.startsWith('/')) {
-          return match.replace(`(/${path.slice(1)}`, `(/openai_models/${path.slice(1)}`);
+          return match.replace(`(/${path.slice(1)}`, `(/tv/${path.slice(1)}`);
         }
-        return match.replace(`(${path}`, `(/openai_models/${path}`);
-      }
-    },
-    {
-      pattern: /(src|href)=["']((?:\/_next\/)[^"']*)["']/gi,
-      replacement: (match: string, attr: string, path: string) => {
-        return `${attr}="/openai_models${path}"`;
-      }
-    },
-    {
-      pattern: /"(\/_next\/static\/chunks\/[^"]+)"/gi,
-      replacement: (match: string, path: string) => {
-        return `"/openai_models${path}"`;
-      }
-    },
-    {
-      pattern: /"(\/api\/[^"]+)"/gi,
-      replacement: (match: string, path: string) => {
-        return `"/openai_models${path}"`;
-      }
-    },
-    {
-      pattern: /data-href=["']((?:\/_next\/)[^"']*)["']/gi,
-      replacement: (match: string, path: string) => {
-        return `data-href="/openai_models${path}"`;
+        return match.replace(`(${path}`, `(/tv/${path}`);
       }
     }
   ]
@@ -585,6 +557,7 @@ export default async (request: Request, context: Context) => {
           const cssPath = targetUrl.pathname;
           const cssDir = cssPath.substring(0, cssPath.lastIndexOf('/') + 1);
         
+          // 🔧 这里修复了中文逗号问题
           content = content.replace(
             /url\(['"]?(?!https?:\/\/|\/\/|\/|data:|#)([^)'"]*)['"]?\)/gi,
             `url(${url.origin}${matchedPrefix}${cssDir}$1)`
