@@ -43,7 +43,7 @@ const PROXY_CONFIG = {
   void: "api.voidai.app",
 
   // ===== 网站 =====
-  claude/models: "docs。claude.com/en/docs/about-claude/models/overview",
+  claude/models: "docs.claude.com/en/docs/about-claude/models/overview",
 } as const;
 
 // 需要修复路径的内容类型
